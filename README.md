@@ -35,6 +35,8 @@ bash vm.sh
 
 We have tar.gz to qcow2 (still functional but not implemented in vm.sh yet): targztoqcow2.sh
 
+Soon add pre-built QEMU for Linux for full freeroot-like
+
 ## Videos: https://www.youtube.com/watch?v=PPJWx2UnQQE
 Copyright: 
 Codes: GPL-3.0 with credits
