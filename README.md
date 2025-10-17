@@ -4,19 +4,19 @@
 ## How to use
 1. Install QEMU
 
-Arch: `pacman -S qemu`
+Arch: `sudo pacman -S qemu`
 
-Debian/Ubuntu: `apt-get install qemu-system`
+Debian/Ubuntu: `sudo apt install qemu qemu-kvm`
 
-Fedora: `dnf install @virtualization`
+Fedora: `sudo dnf install @virtualization`
 
-Gentoo: `emerge --ask app-emulation/qemu`
+Gentoo: `sudo emerge --ask app-emulation/qemu`
 
-RHEL/CentOS: `yum install qemu-kvm`
+RHEL/CentOS: `sudo yum install qemu-kvm`
 
-SUSE: `zypper install qemu`
+SUSE: `sudo zypper install qemu`
 
-Google Firebase Studio: copy the `dev.nix` file and paste it
+Google Firebase Studio: copy the `googlefirebasestudio/dev.nix` file and paste it
 
 2. Clone the repo
 
