@@ -14,14 +14,14 @@ IMG_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd
 IMG_FILE="$VM_DIR/ubuntu-image.img"
 UBUNTU_PERSISTENT_DISK="$VM_DIR/persistent.qcow2"
 SEED_FILE="$VM_DIR/seed.iso"
-MEMORY=16G
-CPUS=4
+MEMORY=64G
+CPUS=16
 SSH_PORT=2222
-DISK_SIZE=80G
+DISK_SIZE=120G
 IMG_SIZE=20G
-HOSTNAME="ubuntu"
-USERNAME="ubuntu"
-PASSWORD="ubuntu"
+HOSTNAME="noxy"
+USERNAME="root"
+PASSWORD="554466DSAFf"
 # use this if you are using tcg
 # if not, simply set it to 0G
 SWAP_SIZE=4G
