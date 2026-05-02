@@ -10,7 +10,7 @@ set -euo pipefail
 # CONFIG
 # =============================
 VM_DIR="$(pwd)/vm"
-IMG_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+IMG_URL="https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img"
 IMG_FILE="$VM_DIR/ubuntu-image.img"
 UBUNTU_PERSISTENT_DISK="$VM_DIR/persistent.qcow2"
 SEED_FILE="$VM_DIR/seed.iso"
