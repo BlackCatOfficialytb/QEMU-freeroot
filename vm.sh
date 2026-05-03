@@ -612,7 +612,7 @@ show_header() {
     clear
     echo -e "${BOLD}${BLUE}  ╔══════════════════════════════════════════╗${NC}"
     echo -e "${BOLD}${BLUE}  ║       QEMU-FREEROOT v${VERSION}                 ║${NC}"
-    echo -e "${BOLD}${BLUE}  ║   Credit: BlackCatOfficial, BiraloGaming   ║${NC}"
+    echo -e "${BOLD}${BLUE}  ║   Credit: BlackCatOfficial, BiraloGaming ║${NC}"
     echo -e "${BOLD}${BLUE}  ╚══════════════════════════════════════════╝${NC}"
     echo ""
 }
