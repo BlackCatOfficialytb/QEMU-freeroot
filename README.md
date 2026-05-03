@@ -6,7 +6,7 @@
 
 Arch: `sudo pacman -S qemu`
 
-Debian/Ubuntu: `sudo apt install qemu qemu-kvm`
+Debian/Ubuntu: `sudo apt install qemu-kvm cloud-image-utils qemu-utils`
 
 Fedora: `sudo dnf install @virtualization`
 
