@@ -441,11 +441,88 @@ configure_vm() {
 }
 
 # =============================
+# CLOUDFLARED TUNNEL
+# =============================
+cf_tunnel_start() {
+    local name="$1" ssh_port="$2"
+    local tunnel_dir="$VM_DIR/tunnels"
+    local tunnel_pid_file="$tunnel_dir/${name}.pid"
+    local tunnel_url_file="$tunnel_dir/${name}.url"
+
+    mkdir -p "$tunnel_dir"
+
+    if [[ -f "$tunnel_pid_file" ]] && kill -0 "$(cat "$tunnel_pid_file")" 2>/dev/null; then
+        echo -e "${YELLOW}[INFO] Cloudflared tunnel already running for '$name'.${NC}"
+        cat "$tunnel_url_file" 2>/dev/null
+        return 0
+    fi
+
+    if ! command -v cloudflared &>/dev/null; then
+        echo -e "${RED}[ERROR] cloudflared not found. Install it first.${NC}"
+        echo -e "${YELLOW}Run: bash install_cloudflared.sh${NC}"
+        return 1
+    fi
+
+    echo -e "${BLUE}[INFO] Starting cloudflared tunnel for SSH (port $ssh_port)...${NC}"
+    cloudflared tunnel --url ssh://localhost:$ssh_port >"$tunnel_url_file" 2>&1 &
+    local cf_pid=$!
+    echo "$cf_pid" > "$tunnel_pid_file"
+
+    echo -e "${YELLOW}[INFO] Waiting for tunnel URL...${NC}"
+    local tries=0
+    while [[ $tries -lt 30 ]]; do
+        sleep 1
+        if grep -q "https://" "$tunnel_url_file" 2>/dev/null; then
+            local url=$(grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com' "$tunnel_url_file" | head -1)
+            if [[ -n "$url" ]]; then
+                echo "$url" > "$tunnel_url_file"
+                echo -e "${GREEN}[OK] Tunnel URL: ${url}${NC}"
+                return 0
+            fi
+        fi
+        tries=$((tries + 1))
+    done
+
+    echo -e "${RED}[ERROR] Tunnel URL not received in time. Check $tunnel_url_file${NC}"
+    return 1
+}
+
+cf_tunnel_stop() {
+    local name="$1"
+    local tunnel_dir="$VM_DIR/tunnels"
+    local tunnel_pid_file="$tunnel_dir/${name}.pid"
+
+    if [[ -f "$tunnel_pid_file" ]]; then
+        local pid=$(cat "$tunnel_pid_file")
+        kill "$pid" 2>/dev/null || true
+        rm -f "$tunnel_pid_file" "$tunnel_dir/${name}.url"
+        echo -e "${GREEN}[OK] Cloudflared tunnel stopped for '$name'.${NC}"
+    fi
+}
+
+cf_tunnel_get_url() {
+    local name="$1"
+    local tunnel_dir="$VM_DIR/tunnels"
+    local tunnel_url_file="$tunnel_dir/${name}.url"
+
+    if [[ -f "$tunnel_url_file" ]]; then
+        grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com' "$tunnel_url_file" | head -1
+    else
+        echo ""
+    fi
+}
+
+# =============================
 # VM CONTROL (direct interaction)
 # =============================
 get_qemu_pid() {
     local name="$1"
-    pgrep -f "qemu-system.*${name}" | head -1
+    local pid_file="$VM_DIR/${name}.pid"
+    if [[ -f "$pid_file" ]]; then
+        cat "$pid_file"
+    else
+        pgrep -f "qemu-system.*${name}" | head -1
+    fi
 }
 
 control_vm() {
@@ -472,39 +549,88 @@ control_vm() {
         username=$(grep "^USERNAME=" "$conf_file" 2>/dev/null | cut -d= -f2 || echo "ubuntu")
     }
 
+    local serial_sock="$VM_DIR/${name}-serial.sock"
+    local monitor_sock="$VM_DIR/${name}-monitor.sock"
+    local cf_url=$(cf_tunnel_get_url "$name")
+
     echo -e "${BOLD}${BLUE}=== Control VM: ${name} (PID: ${pid}) ===${NC}"
     echo ""
-    echo -e "  ${CYAN}1${NC}. SSH into VM"
-    echo -e "  ${CYAN}2${NC}. Send command via SSH"
-    echo -e "  ${CYAN}3${NC}. Pause / Resume VM"
-    echo -e "  ${CYAN}4${NC}. Send key combo (Ctrl+Alt+Del, etc.)"
-    echo -e "  ${CYAN}5${NC}. Create snapshot"
-    echo -e "  ${CYAN}6${NC}. View VM info"
-    echo -e "  ${CYAN}7${NC}. Resize disk"
+    echo -e "  ${CYAN}1${NC}. Watch QEMU ttyS0 (serial console)"
+    echo -e "  ${CYAN}2${NC}. SSH into VM (cloudflared${cf_url:+: ${GREEN}${cf_url}${NC}})"
+    echo -e "  ${CYAN}3${NC}. Send command via SSH (cloudflared)"
+    echo -e "  ${CYAN}4${NC}. Pause / Resume VM"
+    echo -e "  ${CYAN}5${NC}. Send key combo (QEMU monitor)"
+    echo -e "  ${CYAN}6${NC}. Create snapshot"
+    echo -e "  ${CYAN}7${NC}. View VM info"
+    echo -e "  ${CYAN}8${NC}. Resize disk"
+    echo -e "  ${CYAN}9${NC}. Manage cloudflared tunnel"
     echo -e "  ${CYAN}0${NC}. Back"
     echo ""
     read -p "  > " ctrl_choice
 
     case "$ctrl_choice" in
         1)
-            echo -e "${GREEN}[INFO] Connecting SSH: ${username}@localhost:${ssh_port}${NC}"
-            echo -e "${YELLOW}(Type 'exit' or Ctrl+D to return)${NC}"
-            echo ""
-            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${username}@localhost:${ssh_port}" 2>/dev/null || \
-            echo -e "${RED}[ERROR] SSH connection failed. Is sshd running in the VM?${NC}"
+            if [[ -S "$serial_sock" ]]; then
+                echo -e "${GREEN}[INFO] Connecting to serial console...${NC}"
+                echo -e "${YELLOW}(Press Ctrl+] to disconnect)${NC}"
+                echo ""
+                if command -v socat &>/dev/null; then
+                    socat - UNIX-CONNECT:"$serial_sock"
+                elif command -v nc &>/dev/null; then
+                    nc -U "$serial_sock"
+                else
+                    echo -e "${RED}[ERROR] No serial client found. Install socat or netcat-openbsd.${NC}"
+                fi
+            else
+                echo -e "${YELLOW}[WARN] VM was started in foreground mode (serial on stdio).${NC}"
+                echo -e "${YELLOW}       Stop and restart with: ./vm.sh start-bg $name${NC}"
+            fi
             ;;
         2)
+            cf_url=$(cf_tunnel_get_url "$name")
+            if [[ -z "$cf_url" ]]; then
+                echo -e "${YELLOW}[INFO] No active cloudflared tunnel. Starting...${NC}"
+                if cf_tunnel_start "$name" "$ssh_port"; then
+                    cf_url=$(cf_tunnel_get_url "$name")
+                else
+                    echo -e "${RED}[ERROR] Cannot start tunnel. Falling back to direct SSH.${NC}"
+                    echo -e "${GREEN}[INFO] Connecting: ${username}@localhost:${ssh_port}${NC}"
+                    echo -e "${YELLOW}(Type 'exit' or Ctrl+D to return)${NC}"
+                    echo ""
+                    ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${username}@localhost:${ssh_port}" 2>/dev/null || \
+                    echo -e "${RED}[ERROR] SSH connection failed.${NC}"
+                    read -p ""
+                    return 0
+                fi
+            fi
+            echo -e "${GREEN}[INFO] Connecting SSH via cloudflared: ${cf_url}${NC}"
+            echo -e "${YELLOW}(Type 'exit' or Ctrl+D to return)${NC}"
+            echo ""
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+                -o ProxyCommand="cloudflared access ssh --hostname ${cf_url}" \
+                "${username}@${cf_url#https://}" 2>/dev/null || \
+            echo -e "${RED}[ERROR] SSH connection failed. Is sshd running in the VM?${NC}"
+            ;;
+        3)
             read -p "  Command to send: " cmd
             if [[ -n "$cmd" ]]; then
+                cf_url=$(cf_tunnel_get_url "$name")
                 echo -e "${GREEN}[INFO] Executing: $cmd${NC}"
                 echo "---"
-                ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${username}@localhost:${ssh_port}" "$cmd" 2>/dev/null || \
-                echo -e "${RED}[ERROR] SSH connection failed.${NC}"
+                if [[ -n "$cf_url" ]]; then
+                    ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+                        -o ProxyCommand="cloudflared access ssh --hostname ${cf_url}" \
+                        "${username}@${cf_url#https://}" "$cmd" 2>/dev/null || \
+                    echo -e "${RED}[ERROR] SSH connection failed.${NC}"
+                else
+                    ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+                        "${username}@localhost:${ssh_port}" "$cmd" 2>/dev/null || \
+                    echo -e "${RED}[ERROR] SSH connection failed.${NC}"
+                fi
                 echo "---"
             fi
             ;;
-        3)
-            # Check if VM is paused (SIGSTOP) or running
+        4)
             local proc_state=$(ps -o state= -p "$pid" 2>/dev/null | tr -d ' ')
             if [[ "$proc_state" == "T" ]]; then
                 echo -e "${BLUE}[INFO] Resuming VM...${NC}"
@@ -516,28 +642,65 @@ control_vm() {
                 echo -e "${GREEN}[OK] VM paused. Use Control > Resume to unpause.${NC}"
             fi
             ;;
-        4)
-            echo -e "  Key combos:"
+        5)
+            echo -e "  Key combos (via QEMU monitor):"
             echo -e "  ${CYAN}1${NC}. Ctrl+Alt+Del (force reboot)"
-            echo -e "  ${CYAN}2${NC}. Ctrl+Alt+F1 (TTY1)"
-            echo -e "  ${CYAN}3${NC}. Ctrl+Alt+F2 (TTY2)"
-            echo -e "  ${CYAN}4${NC}. Ctrl+C (send interrupt)"
-            echo -e "  ${CYAN}5${NC}. Custom keys (e.g. 'ctrl-alt-delete')"
+            echo -e "  ${CYAN}2${NC}. Ctrl+A x (quit VM)"
+            echo -e "  ${CYAN}3${NC}. Open monitor shell"
+            echo -e "  ${CYAN}4${NC}. Custom sendkey"
+            echo -e "  ${CYAN}5${NC}. Custom monitor command"
             echo ""
             read -p "  > " key_choice
             case "$key_choice" in
-                1) kill -SIGINT "$pid"; echo -e "${GREEN}[OK] Sent Ctrl+Alt+Del equivalent.${NC}" ;;
-                2) echo -e "${YELLOW}[INFO] Send via QEMU monitor if available.${NC}" ;;
-                3) echo -e "${YELLOW}[INFO] Send via QEMU monitor if available.${NC}" ;;
-                4) kill -SIGINT "$pid"; echo -e "${GREEN}[OK] Sent SIGINT.${NC}" ;;
+                1)
+                    if [[ -S "$monitor_sock" ]]; then
+                        echo "sendkey ctrl-alt-delete" | socat - UNIX-CONNECT:"$monitor_sock" 2>/dev/null
+                        echo -e "${GREEN}[OK] Sent ctrl-alt-delete via monitor.${NC}"
+                    else
+                        echo -e "${YELLOW}[WARN] No monitor socket. Using SIGINT fallback...${NC}"
+                        kill -SIGINT "$pid"
+                        echo -e "${GREEN}[OK] Sent SIGINT.${NC}"
+                    fi
+                    ;;
+                2)
+                    if [[ -S "$monitor_sock" ]]; then
+                        echo "quit" | socat - UNIX-CONNECT:"$monitor_sock" 2>/dev/null
+                        echo -e "${GREEN}[OK] Quit command sent.${NC}"
+                    else
+                        pkill -f "qemu-system.*${name}"
+                        echo -e "${GREEN}[OK] VM killed.${NC}"
+                    fi
+                    ;;
+                3)
+                    if [[ -S "$monitor_sock" ]]; then
+                        echo -e "${YELLOW}[INFO] Monitor shell (type 'help' for commands, 'quit' to exit):${NC}"
+                        socat - UNIX-CONNECT:"$monitor_sock"
+                    else
+                        echo -e "${YELLOW}[WARN] No monitor socket available.${NC}"
+                    fi
+                    ;;
+                4)
+                    read -p "  Keys (e.g. ret, spc, ctrl-a, shift-tab): " keys
+                    if [[ -S "$monitor_sock" ]]; then
+                        echo "sendkey $keys" | socat - UNIX-CONNECT:"$monitor_sock" 2>/dev/null
+                        echo -e "${GREEN}[OK] Sent: sendkey $keys${NC}"
+                    else
+                        echo -e "${RED}[ERROR] No monitor socket.${NC}"
+                    fi
+                    ;;
                 5)
-                    read -p "  Keys: " keys
-                    echo -e "${YELLOW}[INFO] QEMU monitor keys: use 'sendkey' via monitor socket.${NC}"
+                    read -p "  Monitor command: " mon_cmd
+                    if [[ -S "$monitor_sock" ]]; then
+                        echo -e "${YELLOW}Executing: $mon_cmd${NC}"
+                        echo "$mon_cmd" | socat - UNIX-CONNECT:"$monitor_sock" 2>/dev/null
+                    else
+                        echo -e "${RED}[ERROR] No monitor socket.${NC}"
+                    fi
                     ;;
                 *) echo -e "${RED}Invalid.${NC}" ;;
             esac
             ;;
-        5)
+        6)
             echo -e "${BLUE}[INFO] Creating snapshot...${NC}"
             local snapshot_name="${name}-$(date +%Y%m%d-%H%M%S)"
             if command -v qemu-img &>/dev/null; then
@@ -548,18 +711,25 @@ control_vm() {
                 echo -e "${RED}[ERROR] qemu-img not found.${NC}"
             fi
             ;;
-        6)
+        7)
             echo -e "${CYAN}VM Info: ${name}${NC}"
             echo -e "${BOLD}  ──────────────────────────────────────────────────${NC}"
             echo -e "  PID:           ${pid}"
             echo -e "  Status:        $(ps -o state= -p "$pid" 2>/dev/null | tr -d ' ' || echo 'unknown')"
             echo -e "  Image:         ${img_path}"
             echo -e "  Image size:    $(du -sh "$img_path" 2>/dev/null | awk '{print $1}')"
-            echo -e "  SSH:           ${username}@localhost:${ssh_port}"
+            echo -e "  SSH local:     ${username}@localhost:${ssh_port}"
+            cf_url=$(cf_tunnel_get_url "$name")
+            if [[ -n "$cf_url" ]]; then
+                echo -e "  SSH cloudflare: ${GREEN}${cf_url}${NC}"
+            else
+                echo -e "  SSH cloudflare: ${RED}not running${NC}"
+            fi
+            echo -e "  Serial socket: $([ -S "$serial_sock" ] && echo "${GREEN}active${NC}" || echo "${RED}N/A (foreground mode)${NC}")"
+            echo -e "  Monitor socket: $([ -S "$monitor_sock" ] && echo "${GREEN}active${NC}" || echo "${RED}N/A${NC}")"
             echo -e "  Uptime:        $(ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ' || echo 'unknown')"
             echo -e "  Memory (RSS):  $(ps -o rss= -p "$pid" 2>/dev/null | awk '{printf "%.0f MB", $1/1024}' || echo 'unknown')"
             echo -e "  CPU %%:         $(ps -o %cpu= -p "$pid" 2>/dev/null | tr -d ' ' || echo 'unknown')%"
-            # Check SSH reachability
             if command -v nc &>/dev/null; then
                 if nc -z -w2 localhost "$ssh_port" 2>/dev/null; then
                     echo -e "  SSH status:    ${GREEN}reachable${NC}"
@@ -567,7 +737,6 @@ control_vm() {
                     echo -e "  SSH status:    ${RED}not reachable (VM booting?)${NC}"
                 fi
             fi
-            # List snapshots
             if command -v qemu-img &>/dev/null; then
                 local snaps=$(qemu-img snapshot -l "$img_path" 2>/dev/null | tail -n +2)
                 if [[ -n "$snaps" ]]; then
@@ -579,7 +748,7 @@ control_vm() {
             fi
             echo -e "${BOLD}  ──────────────────────────────────────────────────${NC}"
             ;;
-        7)
+        8)
             read -p "  New disk size (e.g. 40G): " new_size
             if [[ -n "$new_size" ]]; then
                 echo -e "${YELLOW}[WARN] This will resize the VM disk to ${new_size}.${NC}"
@@ -598,6 +767,26 @@ control_vm() {
                 fi
             fi
             ;;
+        9)
+            cf_url=$(cf_tunnel_get_url "$name")
+            echo -e "  ${CYAN}1${NC}. Start cloudflared tunnel"
+            echo -e "  ${CYAN}2${NC}. Stop cloudflared tunnel"
+            echo -e "  ${CYAN}3${NC}. Show tunnel URL"
+            echo ""
+            read -p "  > " tunnel_choice
+            case "$tunnel_choice" in
+                1) cf_tunnel_start "$name" "$ssh_port" ;;
+                2) cf_tunnel_stop "$name" ;;
+                3)
+                    if [[ -n "$cf_url" ]]; then
+                        echo -e "${GREEN}  URL: ${cf_url}${NC}"
+                    else
+                        echo -e "${YELLOW}  No active tunnel.${NC}"
+                    fi
+                    ;;
+                *) ;;
+            esac
+            ;;
         0|q) return 0 ;;
         *) echo -e "${RED}Invalid option.${NC}" ;;
     esac
@@ -612,7 +801,7 @@ show_header() {
     clear
     echo -e "${BOLD}${BLUE}  ╔══════════════════════════════════════════╗${NC}"
     echo -e "${BOLD}${BLUE}  ║       QEMU-FREEROOT v${VERSION}                 ║${NC}"
-    echo -e "${BOLD}${BLUE}  ║   Credit: BlackCatOfficial, BiraloGaming ║${NC}"
+    echo -e "${BOLD}${BLUE}  ║   Credit: BlackCatOfficial, BiraloGaming   ║${NC}"
     echo -e "${BOLD}${BLUE}  ╚══════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -655,7 +844,7 @@ menu_main() {
     echo -e "${BOLD}  ──────────────────────────────────────────────────${NC}"
     echo -e "  ${CYAN}1${NC}. Create VM (from Ubuntu Cloud Image)"
     echo -e "  ${CYAN}2${NC}. Create VM (from .tar.gz rootfs)"
-    echo -e "  ${CYAN}3${NC}. Start VM"
+    echo -e "  ${CYAN}3${NC}. Start VM (background + serial/monitor socket)"
     echo -e "  ${CYAN}4${NC}. Stop VM"
     echo -e "  ${CYAN}5${NC}. Control VM"
     echo -e "  ${CYAN}6${NC}. Configure VM"
@@ -739,7 +928,7 @@ menu_create_targz() {
 }
 
 menu_start() {
-    echo -e "${BOLD}${BLUE}=== Start VM ===${NC}"
+    echo -e "${BOLD}${BLUE}=== Start VM (background) ===${NC}"
     echo ""
     if ! db_list_vms; then
         echo -e "${YELLOW}No VMs available. Create one first.${NC}"
@@ -749,7 +938,7 @@ menu_start() {
     read -p "  VM name: " name
     [[ -z "$name" ]] && return 0
     echo ""
-    start_vm "$name"
+    start_vm "$name" "no"
 }
 
 menu_stop() {
