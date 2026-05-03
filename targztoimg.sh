@@ -6,7 +6,7 @@ set -euo pipefail
 # Converts Ubuntu rootfs .tar.gz → bootable .img (raw) or .qcow2
 # Supports: Ubuntu Base, Debian rootfs, or any Linux rootfs tarball
 #
-# CREDIT: Original by BlackCatOfficial (BiraloGaming)
+# CREDIT: Original by BlackCatOfficial
 # Improved: multi-format output, auto-partition, bootloader install, ext4
 # =============================
 
