@@ -441,13 +441,178 @@ configure_vm() {
 }
 
 # =============================
+# VM CONTROL (direct interaction)
+# =============================
+get_qemu_pid() {
+    local name="$1"
+    pgrep -f "qemu-system.*${name}" | head -1
+}
+
+control_vm() {
+    local name="$1"
+    local vm_line
+    vm_line=$(db_get_vm "$name")
+    if [[ -z "$vm_line" ]]; then
+        echo -e "${RED}[ERROR] VM '$name' not found.${NC}"
+        return 1
+    fi
+
+    local pid=$(get_qemu_pid "$name")
+    if [[ -z "$pid" ]]; then
+        echo -e "${RED}[ERROR] VM '$name' is not running.${NC}"
+        return 1
+    fi
+
+    local img_path=$(db_get_field "$vm_line" 3)
+    local conf_file="${img_path%.img}.conf"
+    local ssh_port=$DEFAULT_SSH_BASE
+    local username="ubuntu"
+    [[ -f "$conf_file" ]] && {
+        ssh_port=$(grep "^SSH_PORT=" "$conf_file" 2>/dev/null | cut -d= -f2 || echo "$DEFAULT_SSH_BASE")
+        username=$(grep "^USERNAME=" "$conf_file" 2>/dev/null | cut -d= -f2 || echo "ubuntu")
+    }
+
+    echo -e "${BOLD}${BLUE}=== Control VM: ${name} (PID: ${pid}) ===${NC}"
+    echo ""
+    echo -e "  ${CYAN}1${NC}. SSH into VM"
+    echo -e "  ${CYAN}2${NC}. Send command via SSH"
+    echo -e "  ${CYAN}3${NC}. Pause / Resume VM"
+    echo -e "  ${CYAN}4${NC}. Send key combo (Ctrl+Alt+Del, etc.)"
+    echo -e "  ${CYAN}5${NC}. Create snapshot"
+    echo -e "  ${CYAN}6${NC}. View VM info"
+    echo -e "  ${CYAN}7${NC}. Resize disk"
+    echo -e "  ${CYAN}0${NC}. Back"
+    echo ""
+    read -p "  > " ctrl_choice
+
+    case "$ctrl_choice" in
+        1)
+            echo -e "${GREEN}[INFO] Connecting SSH: ${username}@localhost:${ssh_port}${NC}"
+            echo -e "${YELLOW}(Type 'exit' or Ctrl+D to return)${NC}"
+            echo ""
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${username}@localhost:${ssh_port}" 2>/dev/null || \
+            echo -e "${RED}[ERROR] SSH connection failed. Is sshd running in the VM?${NC}"
+            ;;
+        2)
+            read -p "  Command to send: " cmd
+            if [[ -n "$cmd" ]]; then
+                echo -e "${GREEN}[INFO] Executing: $cmd${NC}"
+                echo "---"
+                ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${username}@localhost:${ssh_port}" "$cmd" 2>/dev/null || \
+                echo -e "${RED}[ERROR] SSH connection failed.${NC}"
+                echo "---"
+            fi
+            ;;
+        3)
+            # Check if VM is paused (SIGSTOP) or running
+            local proc_state=$(ps -o state= -p "$pid" 2>/dev/null | tr -d ' ')
+            if [[ "$proc_state" == "T" ]]; then
+                echo -e "${BLUE}[INFO] Resuming VM...${NC}"
+                kill -SIGCONT "$pid"
+                echo -e "${GREEN}[OK] VM resumed.${NC}"
+            else
+                echo -e "${BLUE}[INFO] Pausing VM (SIGSTOP)...${NC}"
+                kill -SIGSTOP "$pid"
+                echo -e "${GREEN}[OK] VM paused. Use Control > Resume to unpause.${NC}"
+            fi
+            ;;
+        4)
+            echo -e "  Key combos:"
+            echo -e "  ${CYAN}1${NC}. Ctrl+Alt+Del (force reboot)"
+            echo -e "  ${CYAN}2${NC}. Ctrl+Alt+F1 (TTY1)"
+            echo -e "  ${CYAN}3${NC}. Ctrl+Alt+F2 (TTY2)"
+            echo -e "  ${CYAN}4${NC}. Ctrl+C (send interrupt)"
+            echo -e "  ${CYAN}5${NC}. Custom keys (e.g. 'ctrl-alt-delete')"
+            echo ""
+            read -p "  > " key_choice
+            case "$key_choice" in
+                1) kill -SIGINT "$pid"; echo -e "${GREEN}[OK] Sent Ctrl+Alt+Del equivalent.${NC}" ;;
+                2) echo -e "${YELLOW}[INFO] Send via QEMU monitor if available.${NC}" ;;
+                3) echo -e "${YELLOW}[INFO] Send via QEMU monitor if available.${NC}" ;;
+                4) kill -SIGINT "$pid"; echo -e "${GREEN}[OK] Sent SIGINT.${NC}" ;;
+                5)
+                    read -p "  Keys: " keys
+                    echo -e "${YELLOW}[INFO] QEMU monitor keys: use 'sendkey' via monitor socket.${NC}"
+                    ;;
+                *) echo -e "${RED}Invalid.${NC}" ;;
+            esac
+            ;;
+        5)
+            echo -e "${BLUE}[INFO] Creating snapshot...${NC}"
+            local snapshot_name="${name}-$(date +%Y%m%d-%H%M%S)"
+            if command -v qemu-img &>/dev/null; then
+                qemu-img snapshot -c "$snapshot_name" "$img_path" 2>/dev/null && \
+                    echo -e "${GREEN}[OK] Snapshot '$snapshot_name' created.${NC}" || \
+                    echo -e "${YELLOW}[WARN] Snapshot failed (image may be locked or format unsupported).${NC}"
+            else
+                echo -e "${RED}[ERROR] qemu-img not found.${NC}"
+            fi
+            ;;
+        6)
+            echo -e "${CYAN}VM Info: ${name}${NC}"
+            echo -e "${BOLD}  ──────────────────────────────────────────────────${NC}"
+            echo -e "  PID:           ${pid}"
+            echo -e "  Status:        $(ps -o state= -p "$pid" 2>/dev/null | tr -d ' ' || echo 'unknown')"
+            echo -e "  Image:         ${img_path}"
+            echo -e "  Image size:    $(du -sh "$img_path" 2>/dev/null | awk '{print $1}')"
+            echo -e "  SSH:           ${username}@localhost:${ssh_port}"
+            echo -e "  Uptime:        $(ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ' || echo 'unknown')"
+            echo -e "  Memory (RSS):  $(ps -o rss= -p "$pid" 2>/dev/null | awk '{printf "%.0f MB", $1/1024}' || echo 'unknown')"
+            echo -e "  CPU %%:         $(ps -o %cpu= -p "$pid" 2>/dev/null | tr -d ' ' || echo 'unknown')%"
+            # Check SSH reachability
+            if command -v nc &>/dev/null; then
+                if nc -z -w2 localhost "$ssh_port" 2>/dev/null; then
+                    echo -e "  SSH status:    ${GREEN}reachable${NC}"
+                else
+                    echo -e "  SSH status:    ${RED}not reachable (VM booting?)${NC}"
+                fi
+            fi
+            # List snapshots
+            if command -v qemu-img &>/dev/null; then
+                local snaps=$(qemu-img snapshot -l "$img_path" 2>/dev/null | tail -n +2)
+                if [[ -n "$snaps" ]]; then
+                    echo -e "  Snapshots:"
+                    echo "$snaps" | while read -r snap_line; do
+                        echo -e "    $snap_line"
+                    done
+                fi
+            fi
+            echo -e "${BOLD}  ──────────────────────────────────────────────────${NC}"
+            ;;
+        7)
+            read -p "  New disk size (e.g. 40G): " new_size
+            if [[ -n "$new_size" ]]; then
+                echo -e "${YELLOW}[WARN] This will resize the VM disk to ${new_size}.${NC}"
+                echo -e "${YELLOW}       You may need to grow the partition inside the VM.${NC}"
+                read -p "  Confirm? (y/N): " confirm
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    if command -v qemu-img &>/dev/null; then
+                        qemu-img resize "$img_path" "$new_size" 2>/dev/null && \
+                            echo -e "${GREEN}[OK] Disk resized to ${new_size}.${NC}" || \
+                            echo -e "${RED}[ERROR] Resize failed.${NC}"
+                    else
+                        echo -e "${RED}[ERROR] qemu-img not found.${NC}"
+                    fi
+                else
+                    echo -e "${YELLOW}Cancelled.${NC}"
+                fi
+            fi
+            ;;
+        0|q) return 0 ;;
+        *) echo -e "${RED}Invalid option.${NC}" ;;
+    esac
+
+    read -p ""
+}
+
+# =============================
 # INTERACTIVE MENU
 # =============================
 show_header() {
     clear
     echo -e "${BOLD}${BLUE}  ╔══════════════════════════════════════════╗${NC}"
     echo -e "${BOLD}${BLUE}  ║       QEMU-FREEROOT v${VERSION}                 ║${NC}"
-    echo -e "${BOLD}${BLUE}  ║   Credit: BlackCatOfficial, BiraloGaming ║${NC}"
+    echo -e "${BOLD}${BLUE}  ║   Credit: BlackCatOfficial, BiraloGaming   ║${NC}"
     echo -e "${BOLD}${BLUE}  ╚══════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -492,10 +657,11 @@ menu_main() {
     echo -e "  ${CYAN}2${NC}. Create VM (from .tar.gz rootfs)"
     echo -e "  ${CYAN}3${NC}. Start VM"
     echo -e "  ${CYAN}4${NC}. Stop VM"
-    echo -e "  ${CYAN}5${NC}. Configure VM"
-    echo -e "  ${CYAN}6${NC}. Delete VM"
-    echo -e "  ${CYAN}7${NC}. Global Settings"
-    echo -e "  ${CYAN}8${NC}. Quick Start (create + start in one step)"
+    echo -e "  ${CYAN}5${NC}. Control VM"
+    echo -e "  ${CYAN}6${NC}. Configure VM"
+    echo -e "  ${CYAN}7${NC}. Delete VM"
+    echo -e "  ${CYAN}8${NC}. Global Settings"
+    echo -e "  ${CYAN}9${NC}. Quick Start (create + start in one step)"
     echo -e "  ${CYAN}0${NC}. Quit"
     echo ""
 }
@@ -600,6 +766,21 @@ menu_stop() {
     read -p ""
 }
 
+menu_control() {
+    echo -e "${BOLD}${BLUE}=== Control VM ===${NC}"
+    echo ""
+    if ! db_list_vms; then
+        echo -e "${YELLOW}No VMs available.${NC}"
+        read -p ""
+        return 0
+    fi
+    read -p "  VM name: " name
+    [[ -z "$name" ]] && return 0
+    echo ""
+    control_vm "$name"
+    read -p ""
+}
+
 menu_configure() {
     echo -e "${BOLD}${BLUE}=== Configure VM ===${NC}"
     echo ""
@@ -694,6 +875,7 @@ cli_mode() {
         start)  shift; start_vm "$@" ;;
         stop)   shift; stop_vm "$@" ;;
         delete) shift; delete_vm "$@" ;;
+        control) shift; control_vm "$@" ;;
         list)
             show_header
             show_vm_list
@@ -708,6 +890,7 @@ cli_mode() {
             echo "  create [NAME]       Create VM from cloud image"
             echo "  create --targz <file> <NAME>"
             echo "                      Create VM from .tar.gz rootfs"
+            echo "  control <NAME>      Control VM (SSH, pause, snapshot, etc.)"
             echo "  start <NAME>        Start VM"
             echo "  stop <NAME>         Stop VM"
             echo "  delete <NAME>       Delete VM"
@@ -747,10 +930,11 @@ while true; do
         2) menu_create_targz ;;
         3) menu_start ;;
         4) menu_stop ;;
-        5) menu_configure ;;
-        6) menu_delete ;;
-        7) menu_global_settings ;;
-        8) menu_quick_start ;;
+        5) menu_control ;;
+        6) menu_configure ;;
+        7) menu_delete ;;
+        8) menu_global_settings ;;
+        9) menu_quick_start ;;
         0|q|quit|exit) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
         *) echo -e "${RED}Invalid option.${NC}"; sleep 1 ;;
     esac
