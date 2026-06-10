@@ -1,0 +1,332 @@
+return(
+function(L, g, A, m, Z, n, P, q, D, b, l, V, k, u, N, T, R, y, e, v, J, r, M, s)s, M, l, u, k, T, J, b, D, V, y, q, R, e, v, N, r =
+    function(L, g)
+        local A = q(g)
+        local m =
+        function(m, Z, n, P, J, D, R, u, q, N, k, y, M, b, v, T, l)
+            return V(L, {m, Z;
+            n;
+            P;
+            J, D;
+            R;
+            u;
+            q;
+            N, k;
+            y, M;
+            b;
+            v, T, l}, g, A)
+        end
+        return m
+    end,
+    function(L, g)
+        local A = q(g)
+        local m =
+        function(m, Z, n)
+            return V(L, {m, Z;
+            n}, g, A)
+        end
+        return m
+    end,
+    function(L, g)
+        local A = q(g)
+        local m =
+        function(m, Z, n, P, J, D)
+            return V(L, {m, Z;
+            n;
+            P;
+            J, D}, g, A)
+        end
+        return m
+    end, 0 ,
+    function(L)D[L] = D[L] - 1
+        if D[L] == 0 then
+            D[L], J[L] = nil, nil
+        end
+    end,
+    function(L, g)
+        local A = q(g)
+        local m =
+        function(m, Z, n, P, J, D, R, u)
+            return V(L, {m, Z, n;
+            P, J, D, R;
+            u}, g, A)
+        end
+        return m
+    end, {},
+    function(L, g)
+        local A = q(g)
+        local m =
+        function(m, Z, n, P)
+            return V(L, {m;
+            Z;
+            n;
+            P}, g, A)
+        end
+        return m
+    end, {},
+    function(V, A, m, Z)
+        local F, q, nF, S, ZF, X, B, H, G, o, t, a, w, N, f, c, i, AF, Q, u, h, p, j, D, mF, O, x, E, P, I, VF, W, z, C, d, LF, Y, U, K, gF
+        while V do
+            if V < 8296704 then
+                if V < 4148099 then
+                    if V < 1880914 then
+                        if V < 909921 then
+                            if V < 386878 then
+                                if V < 135083 then
+                                    P = {}D = nil V = L.dvxaREjUzit6 D0 else
+                                        V = 4444160
+                                    end else
+                                        if V < 586061 then
+                                            V = J[m[ 1 ]]F = J[m[ 1 ]]N = F[q]F = 1 P = N - F F = 1 N = u + F u = N V[q] = P F = J[m[ 1 ]]P = F[q]F = 0 V = P == F V = V and 14181376 or 11461632 else
+                                                V = q and( - 560384) + 1037568 or 9239040
+                                            end
+                                        end else
+                                            if V < 1332930 then
+                                                if V < 1223994 then
+                                                    V = X U = "unpack"f = V I = L[U]X = I V = I and(9029184) - - 485824 or 9965056 else
+                                                        p = a V = p C[p] = V p = nil V = 1961472
+                                                    end else
+                                                        if V < 1355017 then
+                                                            q = "table"u = L[q]q = "remove"D = u[q]q = J[m[ 1 ]]V = L["2YQdvZP083B2a"]u = {D(q)}P = {g(u)}else
+                                                                p = 18646600515584 P = 0 V = u j = "N\002\244z\006"D = P f = V B = D i = 1 X = B V = 8698880 D = i x = D a = J[m[ 1 ]]t = J[m[ 2 ]]Q = t(j, p)U = x C = a[Q]t = J[m[ 3 ]]I = C a = t[I]Q = 2885120 D = a t = D(X)D = Q I = t
+                                                            end
+                                                        end
+                                                    end else
+                                                        if V < 3240904 then
+                                                            if V < 2225269 then
+                                                                if V < 2009881 then
+                                                                    a = a + Q P = a <= t p = not j P = p and P p = a >= t p = j and p P = p or P p = 1266176 V = P and p P = 3566080 V = V or P else
+                                                                        Y = J[m[ 1 ]]E = "\153\194\247\002\160"z = J[m[ 2 ]]w = 10677288697856 W = z(E, w)O = Y[W]z = J[m[ 3 ]]I = O Y = z[I]D = Y G = 2885120 z = D(U)c = nil V = 11488768 W = X + U D = W E = D F = E I = z w = U D = w K = D X = K H = F D = G I = H o = I F = c U = o
+                                                                    end else
+                                                                        if V < 2558161 then
+                                                                            D = R()j = {}J[D] = A[ 1 ]X = A[ 6 ]I = A[ 8 ]u = R()J[u] = A[ 2 ]U = A[ 9 ]q = R()J[q] = A[ 3 ]Q = R()K = {}i = A[ 11 ]O = T( 15283200 , {m[ 1 ];
+                                                                            m[ 2 ];
+                                                                            D;
+                                                                            u})t = R()B = R()F = R()N = R()J[N] = A[ 4 ]x = R()p = {}V = 0 f = A[ 7 ]J[F] = A[ 5 ]C = R()J[B] = A[ 10 ]d = v( 8408064 , {Q;
+                                                                            C})J[x] = A[ 12 ]a = R()w = 992256 J[C] = A[ 13 ]Y = l( 4052480 , {C;
+                                                                            t})J[a] = A[ 14 ]U = d J[t] = A[ 15 ]W = v( 10968576 , {C, t})z = e( 13181952 , {C;
+                                                                            q;
+                                                                            F;
+                                                                            m[ 1 ];
+                                                                            m[ 2 ], a;
+                                                                            N})P = M( 7016448 , {B, x})i = P J[Q] = A[ 16 ]J[Q] = V I = W J[C] = j J[t] = p J[x] = O J[a] = Y J[B] = z V = L.s84 VhcuDS4 aHH E = i(w, K)K = J[u]G = {K(f)}w = {E(g(G))}P = {g(w)}else
+                                                                                P = 1 a = # C V = F(P, a)a = V V = X(C, a)j = 1 t = V V = J[i]Q = t - j P = f(Q)V[t] = P P = # C Q = 0 V = P == Q a = nil t = nil V = V and 4904960 or 3226112
+                                                                            end
+                                                                        end else
+                                                                            if V < 3966832 then
+                                                                                if V < 3400145 then
+                                                                                    X = "\018\248\n\005\246\001\235"V = J[m[ 2 ]]u = true P = V(u)V = J[m[ 3 ]]u = P f = 24038931955712 P = V(u)q = P P = J[m[ 4 ]]N = J[m[ 5 ]]F = N(X, f)f = "=\252T\252"V = P[F]N = J[m[ 4 ]]F = J[m[ 5 ]]I = 4046932934656 X = F(f, I)P = N[X]F = J[m[ 4 ]]U = 16712791490560 X = J[m[ 5 ]]I = "\193\000\r\247\165"f = X(I, U)N = F[f]X = J[m[ 6 ]]f = r( 10553856 , {})F = D q[V] = F V = L["7xnwUHTpCS0L"]q[P] = X P = {u}q[N] = f else
+                                                                                        V = 3226112
+                                                                                    end else
+                                                                                        D = A[ 1 ]V = 1 u = 1 P = D[u]u = V V = 892416 q = P
+                                                                                    end
+                                                                                end
+                                                                            end else
+                                                                                if V < 6758743 then
+                                                                                    if V < 5090393 then
+                                                                                        if V < 4353488 then
+                                                                                            if V < 4318922 then
+                                                                                                C = not x B = B + i I = B <= U I = C and I C = B >= U C = x and C I = C or I C = 6762496 V = I and C I = 8143360 V = V or I else
+                                                                                                    I = "_ENV"V = 1169920 f = L[I]F = f
+                                                                                                end else
+                                                                                                    if V < 4855671 then
+                                                                                                        P = {u}V = L.p1 rad1 JW8 VzZ5 o else
+                                                                                                            V = {}a = R()t = R()J[a] = V C = nil P = "setmetatable"F = nil Q = R()V = M( 12364288 , {a, I;
+                                                                                                            U;
+                                                                                                            N})j = {}Y = "__metatable"J[t] = V V = {}J[Q] = V N = k(N)V = L[P]O = J[Q]z = nil d = "__index"f = nil X = nil x = nil p = {[d] = O, [Y] = z}B = nil P = V(j, p)B = "getfenv"V = b( 12452352 , {Q, a;
+                                                                                                            i;
+                                                                                                            I, U;
+                                                                                                            t})i = k(i)J[u] = P U = k(U)I = k(I)J[q] = V V = s( 2415616 , {u;
+                                                                                                            q})a = k(a)I = V t = k(t)X = V U = L[B]Q = k(Q)f = U V = U and(12935680) - - 933888 or 15580672
+                                                                                                        end
+                                                                                                    end else
+                                                                                                        if V < 6201593 then
+                                                                                                            if V < 6057218 then
+                                                                                                                V = J[m[ 7 ]]x = 4094177574912 i = 21999896231936 F = J[m[ 4 ]]u = {}I = "\020\016\b\252"X = J[m[ 5 ]]U = 16589311180800 f = X(I, U)N = F[f]F = J[m[ 6 ]]f = J[m[ 4 ]]I = J[m[ 5 ]]B = "=\000\0051 \017\019"U = I(B, i)X = f[U]I = J[m[ 4 ]]U = J[m[ 5 ]]i = "\248P\r\247\t"B = U(i, x)f = I[B]I = b( 14300160 , {})q = {[N] = F, [X] = D;
+                                                                                                                [f] = I}P = {V(u, q)}V = L.zk4 eEvsFHJsV P = {g(P)}else
+                                                                                                                    j = 10000 z = V z = 6261248 O = V W = 5077504 I = j V = 8698880 p = U <= I D = p Y = D and W d = Y or z D = d
+                                                                                                                end else
+                                                                                                                    if V < 6426867 then
+                                                                                                                        V = D and( - 765888) + 9620416 or - 16878592 else
+                                                                                                                            q = nil V = J[m[ 1 ]]P = J[m[ 2 ]]u = nil V[D] = u V = 11004416 P[D] = q
+                                                                                                                        end
+                                                                                                                    end
+                                                                                                                end else
+                                                                                                                    if V < 8070864 then
+                                                                                                                        if V < 7247447 then
+                                                                                                                            if V < 6929757 then
+                                                                                                                                I = B p = "string"V = 4264960 j = L[p]p = "byte"Q = j[p]j = Q(D, I)Q = J[m[ 6 ]]p = Q()t = j + p a = t + X p = 1 t = 256 I = nil C = a % t t = q[u]X = C j = X + p Q = N[j]a = t .. Q q[u] = a else
+                                                                                                                                    D = R()u = R()J[D] = A[ 1 ]J[u] = A[ 2 ]V = J[m[ 1 ]]q = J[u]P = V(q)q = R()J[q] = P V = y( 7833600 , {m[ 2 ], D;
+                                                                                                                                    u, q})N = V P = {N}V = L.lMDMG7 eTj7 yaM
+                                                                                                                                end else
+                                                                                                                                    if V < 7719428 then
+                                                                                                                                        Y = 5985181 O = D < Y V = O and 2078720 or 8173568 else
+                                                                                                                                            D = {n( 1 , g(A))}V = J[m[ 1 ]]u = J[m[ 2 ]]N = J[m[ 3 ]]F = J[m[ 4 ]]q = {g(D)}P = {V(u, q, N, F)}P = {g(P)}V = L.GuPJjdDQqihLab
+                                                                                                                                        end
+                                                                                                                                    end else
+                                                                                                                                        if V < 8174527 then
+                                                                                                                                            if V < 8153912 then
+                                                                                                                                                X = nil N = nil f = nil V = 4444160 else
+                                                                                                                                                    S = J[m[ 3 ]]V = 11488768 h = nil U = h gF = "\'\233\167\241\2199Q\216\t\n\246+"AF = 21947282882560 LF = J[m[ 1 ]]VF = J[m[ 2 ]]mF = VF(gF, AF)ZF = LF[mF]nF = S[ZF]ZF = {}D = nF S = nil X = S I = ZF
+                                                                                                                                                end else
+                                                                                                                                                    V = J[m[ 2 ]]V = V and( - 687488) + 3929472 or 6045184
+                                                                                                                                                end
+                                                                                                                                            end
+                                                                                                                                        end
+                                                                                                                                    end else
+                                                                                                                                        if V < 12313468 then
+                                                                                                                                            if V < 10909682 then
+                                                                                                                                                if V < 9323756 then
+                                                                                                                                                    if V < 8734795 then
+                                                                                                                                                        if V < 8572971 then
+                                                                                                                                                            D = 1 P = J[m[ 1 ]]V = P + D J[m[ 1 ]] = V P = J[m[ 2 ]]V = L.b5 NvkHp9 PdAAF D = J[m[ 1 ]]u = 1 P[D] = u P = J[m[ 1 ]]P = {P}else
+                                                                                                                                                                V = 15928320
+                                                                                                                                                            end else
+                                                                                                                                                                if V < 8923022 then
+                                                                                                                                                                    P = 4686170 V = D < P V = V and 10831872 or 7354880 else
+                                                                                                                                                                        D = nil q = nil u = nil P = {}V = L.hQI4 zYijJhSj
+                                                                                                                                                                    end
+                                                                                                                                                                end else
+                                                                                                                                                                    if V < 10057039 then
+                                                                                                                                                                        if V < 9638206 then
+                                                                                                                                                                            U = "setmetatable"B = "getmetatable"i = "select"I = "newproxy"V = f f = L[I]I = L[U]U = L[B]B = L[i]i = {g(D)}N = {V(F, X, f, I, U, B, i)}P = {g(N)}V = L["9B5z0PANyOPN"]else
+                                                                                                                                                                                B = "table"U = L[B]t = 4885525299200 V = 9515008 a = "P\190\002\241\222\136"i = J[u]x = J[q]C = x(a, t)B = i[C]I = U[B]X = I
+                                                                                                                                                                            end else
+                                                                                                                                                                                if V < 10778540 then
+                                                                                                                                                                                    V = 498688 P = {V}V = L.bjPkfeTdpwUa else
+                                                                                                                                                                                        P = 1162030 V = D < P V = V and( - 891648) + 2321664 or(6766784) - 647872
+                                                                                                                                                                                    end
+                                                                                                                                                                                end
+                                                                                                                                                                            end else
+                                                                                                                                                                                if V < 11486503 then
+                                                                                                                                                                                    if V < 11327401 then
+                                                                                                                                                                                        if V < 10993046 then
+                                                                                                                                                                                            D = A[ 1 ]V = J[m[ 1 ]]q = J[m[ 1 ]]u = q[D]q = 1 P = u - q V[D] = P u = J[m[ 1 ]]P = u[D]u = 0 V = P == u V = V and 6719488 or(11984896) - 980480 else
+                                                                                                                                                                                                D = nil P = {}V = L.k0 ntTybGHVRrL5
+                                                                                                                                                                                            end else
+                                                                                                                                                                                                if V < 11444252 then
+                                                                                                                                                                                                    u = J[m[ 3 ]]q = 247 D = u * q u = 257 P = D % u J[m[ 3 ]] = P u = J[m[ 3 ]]q = 1 D = u ~= q V = D and 14523904 or 11389440 else
+                                                                                                                                                                                                        V = D[u]q = V V = 892416
+                                                                                                                                                                                                    end
+                                                                                                                                                                                                end else
+                                                                                                                                                                                                    if V < 12291623 then
+                                                                                                                                                                                                        if V < 11819249 then
+                                                                                                                                                                                                            V = 15928320 else
+                                                                                                                                                                                                                V = nil D = A F = "math"u = R()X = "table"I = R()P = nil q = R()J[u] = V N = "math"J[q] = P P = L[N]N = "floor"i = R()V = P[N]N = R()f = "string"J[N] = V U = R()P = L[F]F = "random"V = P[F]P = L[X]X = "remove"F = V V = P[X]a = 256 P = L[f]t = a f = "char"X = V V = P[f]f = V V = 0 J[I] = V P = 1 V = 2 J[U] = V V = {}B = V V = {}J[i] = V V = 0 x = V V = {}a = 1 Q = a C = V a = 0 j = Q < a V = 1961472 a = P - Q
+                                                                                                                                                                                                            end else
+                                                                                                                                                                                                                V = {}I = "string"F = 35184372088832 J[m[ 2 ]] = V P = J[m[ 3 ]]N = P f = 255 P = u % F J[m[ 4 ]] = P X = u % f f = 2 F = X + f J[m[ 5 ]] = F B = 1 i = B f = L[I]I = "len"X = f[I]B = 0 f = X(D)V = 4264960 X = ""q[u] = X X = 34 U = f x = i < B I = 1 B = I - i
+                                                                                                                                                                                                            end
+                                                                                                                                                                                                        end
+                                                                                                                                                                                                    end else
+                                                                                                                                                                                                        if V < 14261217 then
+                                                                                                                                                                                                            if V < 13191891 then
+                                                                                                                                                                                                                if V < 13121204 then
+                                                                                                                                                                                                                    if V < 12411543 then
+                                                                                                                                                                                                                        D = J[m[ 1 ]]P = # D D = 0 V = P == D V = V and 13143040 or 1349632 else
+                                                                                                                                                                                                                            D = A[ 1 ]V = J[m[ 1 ]]u = A[ 2 ]q = V V = q[u]V = V and 200704 or( - 91456) + 12385600
+                                                                                                                                                                                                                        end else
+                                                                                                                                                                                                                            if V < 13178996 then
+                                                                                                                                                                                                                                u = J[m[ 2 ]]q = 37 D = u * q u = 9239548395521 P = D + u D = 35184372088832 V = P % D J[m[ 2 ]] = V V = 11389440 else
+                                                                                                                                                                                                                                    D = A[ 1 ]u = # D q = u V = 13480448 u = 1 P = 1 N = u u = 0 F = N < u u = P - N
+                                                                                                                                                                                                                                end
+                                                                                                                                                                                                                            end else
+                                                                                                                                                                                                                                if V < 13978189 then
+                                                                                                                                                                                                                                    if V < 13568870 then
+                                                                                                                                                                                                                                        X = not F u = u + N P = u <= q P = X and P X = u >= q X = F and X P = X or P X = 16597504 V = P and X P = 8177664 V = V or P else
+                                                                                                                                                                                                                                            B = "getfenv"U = L[B]B = U()V = 15580672 f = B
+                                                                                                                                                                                                                                        end else
+                                                                                                                                                                                                                                            F = nil V = J[m[ 1 ]]X = nil P = J[m[ 2 ]]V[q] = F V = 11461632 P[q] = X
+                                                                                                                                                                                                                                        end
+                                                                                                                                                                                                                                    end else
+                                                                                                                                                                                                                                        if V < 15893628 then
+                                                                                                                                                                                                                                            if V < 14643193 then
+                                                                                                                                                                                                                                                if V < 14399776 then
+                                                                                                                                                                                                                                                    V = 498688 P = {V}V = L.Lf8 yNs80 cVyP else
+                                                                                                                                                                                                                                                        i = 13 q = 32 u = J[m[ 3 ]]D = u % q N = J[m[ 4 ]]f = J[m[ 2 ]]a = J[m[ 3 ]]C = a - D U = 2 a = 32 x = C / a B = i - x I = U ^ B V = 1349632 X = f / I F = N(X)N = 4294967296 q = F % N F = 2 N = F ^ D u = q / N I = 1 N = J[m[ 4 ]]f = u % I I = 4294967296 X = f * I F = N(X)i = 256 N = J[m[ 4 ]]D = nil X = N(u)f = 65536 q = F + X F = 65536 N = q % F X = q - N u = nil F = X / f U = 256 f = 256 X = N % f I = N - X f = I / U U = 256 I = F % U B = F - I U = B / i N = nil q = nil B = {X;
+                                                                                                                                                                                                                                                        f, I;
+                                                                                                                                                                                                                                                        U}f = nil X = nil U = nil I = nil J[m[ 1 ]] = B F = nil
+                                                                                                                                                                                                                                                    end else
+                                                                                                                                                                                                                                                        if V < 15356298 then
+                                                                                                                                                                                                                                                            q = A[ 3 ]P = nil f = nil V = nil U = P N = A[ 4 ]X = nil I = V u = A[ 2 ]F = nil V = 6259712 D = A[ 1 ]else
+                                                                                                                                                                                                                                                                V = I V = f and - 1236864 or - 5295872 F = f
+                                                                                                                                                                                                                                                            end
+                                                                                                                                                                                                                                                        end else
+                                                                                                                                                                                                                                                            if V < 16492528 then
+                                                                                                                                                                                                                                                                if V < 15976158 then
+                                                                                                                                                                                                                                                                    V = 6259712 else
+                                                                                                                                                                                                                                                                        LF = # N VF = J[m[ 4 ]]D = LF mF = {VF(I)}V = L.QWE8 RPIUksM5 P = {g(mF)}
+                                                                                                                                                                                                                                                                    end else
+                                                                                                                                                                                                                                                                        I = 1 X = u V = J[m[ 1 ]]P = D[X]B = J[m[ 1 ]]i = D[X]X = nil U = B[i]f = I + U V[P] = f V = 13480448
+                                                                                                                                                                                                                                                                    end
+                                                                                                                                                                                                                                                                end
+                                                                                                                                                                                                                                                            end
+                                                                                                                                                                                                                                                        end
+                                                                                                                                                                                                                                                    end
+                                                                                                                                                                                                                                                end V = # Z
+                                                                                                                                                                                                                                                return g(P)
+                                                                                                                                                                                                                                            end,
+                                                                                                                                                                                                                                            function(L, g)
+                                                                                                                                                                                                                                                local A = q(g)
+                                                                                                                                                                                                                                                local m =
+                                                                                                                                                                                                                                                function( ... )
+                                                                                                                                                                                                                                                    return V(L, { ... }, g, A)
+                                                                                                                                                                                                                                                end
+                                                                                                                                                                                                                                                return m
+                                                                                                                                                                                                                                            end,
+                                                                                                                                                                                                                                            function(L)
+                                                                                                                                                                                                                                                for V = 1 , # L, 1 do
+                                                                                                                                                                                                                                                    D[L[V]] = 1 + D[L[V]]
+                                                                                                                                                                                                                                                end
+                                                                                                                                                                                                                                                if A then
+                                                                                                                                                                                                                                                    local V = A(true)
+                                                                                                                                                                                                                                                    local g = Z(V)g.__index, g.__gc, g.__len = L, N,
+                                                                                                                                                                                                                                                    function()
+                                                                                                                                                                                                                                                        return - 1650944
+                                                                                                                                                                                                                                                    end
+                                                                                                                                                                                                                                                    return V else
+                                                                                                                                                                                                                                                        return m({}, {__gc = N, __index = L;
+                                                                                                                                                                                                                                                        __len =
+                                                                                                                                                                                                                                                        function()
+                                                                                                                                                                                                                                                            return(871872) + 656960
+                                                                                                                                                                                                                                                        end})
+                                                                                                                                                                                                                                                    end
+                                                                                                                                                                                                                                                end,
+                                                                                                                                                                                                                                                function()u = u + 1 D[u] = 1
+                                                                                                                                                                                                                                                    return u
+                                                                                                                                                                                                                                                end,
+                                                                                                                                                                                                                                                function(L, g)
+                                                                                                                                                                                                                                                    local A = q(g)
+                                                                                                                                                                                                                                                    local m =
+                                                                                                                                                                                                                                                    function(m, Z)
+                                                                                                                                                                                                                                                        return V(L, {m;
+                                                                                                                                                                                                                                                        Z}, g, A)
+                                                                                                                                                                                                                                                    end
+                                                                                                                                                                                                                                                    return m
+                                                                                                                                                                                                                                                end,
+                                                                                                                                                                                                                                                function(L, g)
+                                                                                                                                                                                                                                                    local A = q(g)
+                                                                                                                                                                                                                                                    local m =
+                                                                                                                                                                                                                                                    function(m)
+                                                                                                                                                                                                                                                        return V(L, {m}, g, A)
+                                                                                                                                                                                                                                                    end
+                                                                                                                                                                                                                                                    return m
+                                                                                                                                                                                                                                                end,
+                                                                                                                                                                                                                                                function(L)
+                                                                                                                                                                                                                                                    local V, g = 1 , L[ 1 ]
+                                                                                                                                                                                                                                                    while g do
+                                                                                                                                                                                                                                                        D[g], V = D[g] - 1 , 1 + V
+                                                                                                                                                                                                                                                        if - 1573120 == D[g]then
+                                                                                                                                                                                                                                                            D[g], J[g] = nil, nil
+                                                                                                                                                                                                                                                        end g = L[V]
+                                                                                                                                                                                                                                                    end
+                                                                                                                                                                                                                                                end,
+                                                                                                                                                                                                                                                function(L, g)
+                                                                                                                                                                                                                                                    local A = q(g)
+                                                                                                                                                                                                                                                    local m =
+                                                                                                                                                                                                                                                    function()
+                                                                                                                                                                                                                                                        return V(L, {}, g, A)
+                                                                                                                                                                                                                                                    end
+                                                                                                                                                                                                                                                    return m
+                                                                                                                                                                                                                                                end
+                                                                                                                                                                                                                                                return(y( 12272640 , {}))(g(P))
+                                                                                                                                                                                                                                            end)(getfenv and getfenv()or _ENV, unpack or table.unpack, newproxy, setmetatable, getmetatable, select, { ... })

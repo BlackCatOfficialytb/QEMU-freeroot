@@ -1,0 +1,17 @@
+============================================================
+XHider M1 Mode Decrypted Strings (print_hi.lua)
+============================================================
+
+--- Readable Strings (10) ---
+[0] print
+[1] you cracked it yay, hi
+[2] MS3ayrtjxTSakl
+[3] __index
+[4] __gc
+[5] __len
+[6] __gc
+[7] __index
+[8] __len
+[9] unpack
+
+--- Binary/Encrypted Strings (0) ---

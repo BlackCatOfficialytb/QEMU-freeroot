@@ -1,0 +1,98 @@
+============================================================
+XHider M3 Mode Decrypted Strings (print_hi.lua)
+============================================================
+
+--- v() Decoded Strings (86 readable) ---
+v(0) = gmatch
+v(10) = You Are Lost!
+v(27) = random
+v(37) = concat
+v(47) = unpack
+v(57) = 4U75QBu
+v(68) = ohTfGu
+v(78) = :(%d*):
+v(89) = :
+v(94) = Idg4q3A
+v(105) = NZLLN69xs
+v(118) = love u
+v(128) = Fuck U
+v(138) = Congratulations on your success!
+v(174) = getinfo
+v(185) = __index
+v(196) = __newindex
+v(210) = __metatable
+v(225) = __gc
+v(233) = __mode
+v(243) = k
+v(248) = __call
+v(258) = __len
+v(267) = __pairs
+v(278) = __ipairs
+v(290) = __debug
+v(301) = __tostring
+v(315) = __concat
+v(327) = __unm
+v(336) = __add
+v(345) = __sub
+v(354) = __mul
+v(363) = __div
+v(372) = __mod
+v(381) = __pow
+v(390) = __eq
+v(398) = __lt
+v(406) = __le
+v(414) = function
+v(426) = This metatable is locked.
+v(455) = os
+v(461) = io
+v(467) = file
+v(475) = debug
+v(484) = gethook
+v(495) = clock
+v(504) = time
+v(512) = insert
+v(522) = S
+v(527) = what
+v(535) = C
+v(540) = getupvalue
+v(554) = return 1+1
+v(568) = randomString
+v(584) = floor
+v(593) = ldexp
+v(602) = n
+v(607) = #
+v(612) = N
+v(617) = m
+v(622) = M
+v(627) = number
+v(637) = [%.eE]
+v(647) = .0
+v(653) = ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
+v(721) = =*$
+v(728) = =
+v(737) = c
+v(742) = d
+v(747) = x
+v(752) = D
+v(757) = V
+v(762) = A
+v(767) = b
+v(772) = B
+v(777) = s
+v(782) = a
+v(787) = F
+v(792) = g
+v(797) = f
+v(802) = char
+v(810) = Z
+v(815) = v
+v(820) = X
+v(825) = z
+v(830) = AAACBAAAAAUAAAAFAgAAAQAAAAAAQUAAAAECAQABAAEAAAAcQAABHAEAAAAAAgABAB4AgAAeAQAAAAABAAAAAgAAAAQFAAAAcHJpbnQEFgAAAHlvdSBjcmFja2VkIGl0IHlheSwgaGkAAAAA
+
+--- v() Binary Strings (1) ---
+v(733) = hex=
+
+--- Bytecode Constants (2) ---
+[0] print
+[1] you cracked it yay, hi
