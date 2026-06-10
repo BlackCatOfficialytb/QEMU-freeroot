@@ -23,10 +23,6 @@ HOSTNAME="ubuntu"
 USERNAME="ubuntu"
 PASSWORD="ubuntu"
 
-# URL to download your qemu.zip
-# Replace this URL with your actual direct download link if needed
-QEMU_ZIP_URL="https://github.com/BlackCatOfficialytb/QEMU-freeroot/releases/download/v1.0.0/qemu.zip"
-
 # use this if you are using tcg
 # if not, set it to 0G
 SWAP_SIZE=4G
@@ -211,47 +207,42 @@ install_qemu_auto() {
     else
         echo "[INFO] Host architecture: $HOST_ARCH"
         echo "[INFO] Missing tools: ${missing[*]}"
-        local success=0
+        local success=1
 
-        # Install unzip dependency if running as root
-        if ! cmd_exists unzip && [ "$(id -u)" -eq 0 ]; then
-            echo "[INSTALL] Installing unzip..."
-            if cmd_exists apt-get; then apt-get update -qq && apt-get install -y -qq unzip; fi
-            if cmd_exists pacman; then pacman -Sy --noconfirm unzip; fi
-            if cmd_exists dnf; then dnf install -y unzip; fi
-        fi
+        # 1. TRY DIRECT DOWNLOAD OF THE SPECIFIED BINARIES
+        echo "[INSTALL] Attempting direct binary downloads..."
+        local base_url="https://github.com/BlackCatOfficialytb/bcofilesrepo/releases/download/qemu-related"
+        local bins=(
+            "qemu-bridge-helper"
+            "qemu-edid"
+            "qemu-img"
+            "qemu-io"
+            "qemu-nbd"
+            "qemu-pr-helper"
+            "qemu-system-aarch64"
+            "qemu-system-x86_64"
+            "qemu-vmsr-helper"
+        )
 
-        # 1. TRY ZIP METHOD
-        if cmd_exists unzip; then
-            echo "[INSTALL] Attempting ZIP-based setup..."
-            if download_file "$QEMU_ZIP_URL" "$VM_DIR/qemu.zip"; then
-                unzip -o "$VM_DIR/qemu.zip" -d "$dl_dir"
-                
-                # Check if binaries are nested inside any subfolders within the zip and flatten them
-                local found_sys
-                found_sys=$(find "$dl_dir" -type f -name "$QEMU_SYS" -print -quit)
-                if [ -n "$found_sys" ]; then
-                    local bin_dir
-                    bin_dir=$(dirname "$found_sys")
-                    if [ "$bin_dir" != "$dl_dir" ]; then
-                        mv "$bin_dir"/* "$dl_dir/" 2>/dev/null || true
-                    fi
-                    chmod +x "$dl_dir"/*
-                    
-                    if [ -f "$dl_dir/$QEMU_SYS" ] && [ -f "$dl_dir/$QEMU_IMG" ]; then
-                        echo "[INSTALL] QEMU binaries successfully set up from ZIP!"
-                        success=1
-                    fi
-                fi
-                rm -f "$VM_DIR/qemu.zip"
+        for bin in "${bins[@]}"; do
+            if ! download_file "$base_url/$bin" "$dl_dir/$bin"; then
+                echo "[WARNING] Failed to download $bin"
+                success=0
+            else
+                chmod +x "$dl_dir/$bin"
             fi
+        done
+
+        # Verify critical binaries are successfully present and working
+        if [ "$success" -eq 1 ] && [ -f "$dl_dir/$QEMU_SYS" ] && [ -f "$dl_dir/$QEMU_IMG" ]; then
+            echo "[INSTALL] QEMU binaries downloaded and configured successfully!"
         else
-            echo "[WARNING] 'unzip' utility is missing. Skipping ZIP extraction."
+            success=0
         fi
 
         # 2. FALLBACK: COMPILE FROM GITLAB SOURCE
         if [ "$success" -ne 1 ]; then
-            echo "[WARNING] ZIP installation failed or skipped. Trying compilation fallback..."
+            echo "[WARNING] Direct binary downloads failed or were incomplete. Falling back to compilation..."
             if build_qemu_from_source; then
                 success=1
             fi
