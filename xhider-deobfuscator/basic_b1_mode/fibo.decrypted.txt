@@ -1,4 +1,0 @@
--- Decrypted from: fibo.lua
--- Mode: basic
--- Strings found: 0
-

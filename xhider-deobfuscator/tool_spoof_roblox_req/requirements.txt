@@ -1,5 +1,0 @@
-playwright
-requests
-setuptools
-webdriver-manager
-packaging

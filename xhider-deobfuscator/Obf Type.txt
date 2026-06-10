@@ -1,4 +1,0 @@
-Limit < 100KB: normal, ibs, hard, max, env, hidden (all cracked inside)
-Limit < 300KB: wrd (cracked by 0x251/Prometheus-Deobfuscator), ibv, medium, m1, m2, m3, obf (cracked inside)
-Limit < 500KB: psu, psu medium, psu hard, psu max
-All Sizes: obf me, obf flow, obf weak, obf li, obf ps, obf rz, obf r2, obf l1, obf l2, evil (cracked vm but not cracked full), abyss, abyss2, hex, veil, lightrew, ib1, ib2, ib3 (soon add more)

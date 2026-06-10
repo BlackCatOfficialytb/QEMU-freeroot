@@ -1,9 +1,0 @@
-============================================================
-XHider M2 Mode Decrypted Constants (print_hi.lua)
-============================================================
-
---- Readable Strings (2) ---
-[0] print
-[1] you cracked it yay, hi
-
---- Binary/Encrypted Strings (0) ---
