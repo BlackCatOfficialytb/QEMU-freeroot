@@ -22,8 +22,13 @@ IMG_SIZE=20G
 HOSTNAME="ubuntu"
 USERNAME="ubuntu"
 PASSWORD="ubuntu"
+
+# URL to download your qemu.zip
+# Replace this URL with your actual direct download link if needed
+QEMU_ZIP_URL="https://github.com/BlackCatOfficialytb/QEMU-freeroot/releases/download/v1.0.0/qemu.zip"
+
 # use this if you are using tcg
-# if not, simply set it to 0G
+# if not, set it to 0G
 SWAP_SIZE=4G
 mkdir -p "$VM_DIR"
 cd "$VM_DIR"
@@ -82,7 +87,7 @@ extract_deb_binary() {
     done
 
     if [ -z "$data_tar" ] || [ ! -f "$data_tar" ]; then
-        echo "[ERROR] data.tar not found in .deb"
+        echo "[ERROR] data.tar not found in .deb."
         return 1
     fi
 
@@ -110,93 +115,172 @@ extract_deb_binary() {
     return 1
 }
 
+# ===================================================
+# FALLBACK: CLONE & COMPILE FROM SOURCE
+# ===================================================
+build_qemu_from_source() {
+    echo "[FALLBACK] Cloning and compiling QEMU from GitLab..."
+    local src_dir="$VM_DIR/qemu-src"
+    local dl_dir="$VM_DIR/qemu-binaries"
+    rm -rf "$src_dir"
+    
+    if ! cmd_exists git; then
+        echo "[ERROR] 'git' is required to clone QEMU source code. Please install 'git' first."
+        return 1
+    fi
+    
+    git clone --depth 1 https://gitlab.com/qemu-project/qemu.git "$src_dir"
+    cd "$src_dir"
+
+    # Map target list based on detected host architecture
+    local TARGET=""
+    case "$HOST_ARCH" in
+        x86_64)  TARGET="x86_64-softmmu" ;;
+        aarch64) TARGET="aarch64-softmmu" ;;
+        armhf)   TARGET="arm-softmmu" ;;
+        riscv64) TARGET="riscv64-softmmu" ;;
+        *)       TARGET="${HOST_ARCH}-softmmu" ;;
+    esac
+
+    # Attempt to install building dependencies if running as root
+    if [ "$(id -u)" -eq 0 ]; then
+        echo "[BUILD] Installing compiling dependencies..."
+        if cmd_exists apt-get; then
+            apt-get update -qq && apt-get install -y -qq ninja-build python3-pip libglib2.0-dev libpixman-1-dev pkg-config make gcc g++
+        elif cmd_exists pacman; then
+            pacman -Sy --noconfirm ninja python glib2 pixman pkgconf make gcc gcc-libs
+        elif cmd_exists dnf; then
+            dnf install -y ninja-build python3 glib2-devel pixman-devel pkgconfig make gcc gcc-c++
+        fi
+    else
+        echo "[INFO] Not running as root; skipping package dependency installation."
+        echo "[INFO] Please ensure 'ninja', 'glib', 'pixman', 'pkg-config', and C++ compiler tools are preinstalled on your host."
+    fi
+
+    echo "[BUILD] Configuring QEMU for $TARGET..."
+    ./configure --target-list="$TARGET"
+
+    echo "[BUILD] Compiling QEMU..."
+    make -j "$(nproc)"
+
+    mkdir -p "$dl_dir"
+    
+    # Locate and copy built binaries
+    local sys_bin="qemu-system-${HOST_ARCH}"
+    [ "$HOST_ARCH" = "armhf" ] && sys_bin="qemu-system-arm"
+    
+    if [ -f "build/$sys_bin" ]; then
+        cp "build/$sys_bin" "$dl_dir/"
+    elif [ -f "build/$TARGET/$sys_bin" ]; then
+        cp "build/$TARGET/$sys_bin" "$dl_dir/"
+    fi
+
+    if [ -f "build/qemu-img" ]; then
+        cp "build/qemu-img" "$dl_dir/"
+    elif [ -f "qemu-img" ]; then
+        cp "qemu-img" "$dl_dir/"
+    fi
+
+    cd "$VM_DIR"
+    if [ -f "$dl_dir/$QEMU_SYS" ] && [ -f "$dl_dir/$QEMU_IMG" ]; then
+        chmod +x "$dl_dir"/*
+        echo "[BUILD] QEMU successfully compiled and ready in $dl_dir"
+        return 0
+    fi
+    
+    echo "[ERROR] Compilation finished, but target binaries were not found."
+    return 1
+}
+
+# ===================================================
+# MAIN AUTO-INSTALL FUNCTION
+# ===================================================
 install_qemu_auto() {
+    local dl_dir="$VM_DIR/qemu-binaries"
+    mkdir -p "$dl_dir"
+    
+    # Prepend our binaries folder to the path
+    export PATH="$dl_dir:$PATH"
+
     local missing=()
     cmd_exists "$QEMU_SYS" || missing+=("$QEMU_SYS")
     cmd_exists "$QEMU_IMG" || missing+=("$QEMU_IMG")
-    cmd_exists "$CLOUD_LOCALDS" || missing+=("$CLOUD_LOCALDS")
-    [ ${#missing[@]} -eq 0 ] && return 0
+    
+    if [ ${#missing[@]} -eq 0 ]; then
+        echo "[INFO] QEMU binaries ($QEMU_SYS, $QEMU_IMG) are already available."
+    else
+        echo "[INFO] Host architecture: $HOST_ARCH"
+        echo "[INFO] Missing tools: ${missing[*]}"
+        local success=0
 
-    echo "[INFO] Host architecture: $HOST_ARCH"
-    echo "[INFO] Missing tools: ${missing[*]}"
-    echo "[INFO] Attempting auto-install..."
+        # Install unzip dependency if running as root
+        if ! cmd_exists unzip && [ "$(id -u)" -eq 0 ]; then
+            echo "[INSTALL] Installing unzip..."
+            if cmd_exists apt-get; then apt-get update -qq && apt-get install -y -qq unzip; fi
+            if cmd_exists pacman; then pacman -Sy --noconfirm unzip; fi
+            if cmd_exists dnf; then dnf install -y unzip; fi
+        fi
 
-    # Try package managers (root)
-    if cmd_exists apt-get && [ "$(id -u)" -eq 0 ]; then
-        echo "[INSTALL] Using apt-get..."
-        apt-get update -qq 2>/dev/null
-        local pkg="qemu-system-x86 qemu-utils cloud-image-utils"
-        case "$HOST_ARCH" in
-            x86_64)  pkg="qemu-system-x86 qemu-utils cloud-image-utils" ;;
-            aarch64) pkg="qemu-system-arm qemu-utils cloud-image-utils" ;;
-            armhf)   pkg="qemu-system-arm qemu-utils cloud-image-utils" ;;
-        esac
-        if apt-get install -y -qq $pkg 2>&1 | tail -3; then
-            echo "[INSTALL] Installed via apt-get"
-            return 0
+        # 1. TRY ZIP METHOD
+        if cmd_exists unzip; then
+            echo "[INSTALL] Attempting ZIP-based setup..."
+            if download_file "$QEMU_ZIP_URL" "$VM_DIR/qemu.zip"; then
+                unzip -o "$VM_DIR/qemu.zip" -d "$dl_dir"
+                
+                # Check if binaries are nested inside any subfolders within the zip and flatten them
+                local found_sys
+                found_sys=$(find "$dl_dir" -type f -name "$QEMU_SYS" -print -quit)
+                if [ -n "$found_sys" ]; then
+                    local bin_dir
+                    bin_dir=$(dirname "$found_sys")
+                    if [ "$bin_dir" != "$dl_dir" ]; then
+                        mv "$bin_dir"/* "$dl_dir/" 2>/dev/null || true
+                    fi
+                    chmod +x "$dl_dir"/*
+                    
+                    if [ -f "$dl_dir/$QEMU_SYS" ] && [ -f "$dl_dir/$QEMU_IMG" ]; then
+                        echo "[INSTALL] QEMU binaries successfully set up from ZIP!"
+                        success=1
+                    fi
+                fi
+                rm -f "$VM_DIR/qemu.zip"
+            fi
+        else
+            echo "[WARNING] 'unzip' utility is missing. Skipping ZIP extraction."
+        fi
+
+        # 2. FALLBACK: COMPILE FROM GITLAB SOURCE
+        if [ "$success" -ne 1 ]; then
+            echo "[WARNING] ZIP installation failed or skipped. Trying compilation fallback..."
+            if build_qemu_from_source; then
+                success=1
+            fi
+        fi
+
+        if [ "$success" -ne 1 ]; then
+            echo "[ERROR] Local QEMU setup failed."
+            exit 1
         fi
     fi
 
-    if cmd_exists pacman && [ "$(id -u)" -eq 0 ]; then
-        echo "[INSTALL] Using pacman..."
-        pacman -Sy --noconfirm qemu-system qemu-utils cloud-image-utils 2>&1 | tail -3
-        return 0
-    fi
-
-    if cmd_exists dnf && [ "$(id -u)" -eq 0 ]; then
-        echo "[INSTALL] Using dnf..."
-        dnf install -y qemu-kvm qemu-img cloud-utils 2>&1 | tail -3
-        return 0
-    fi
-
-    # Download .deb and extract (no root needed)
-    echo "[INSTALL] Downloading static binaries..."
-    local dl_dir="$VM_DIR/qemu-binaries"
-    mkdir -p "$dl_dir"
-
-    local deb_arch=""
-    case "$HOST_ARCH" in
-        x86_64)  deb_arch="amd64" ;;
-        aarch64) deb_arch="arm64" ;;
-        armhf)   deb_arch="armhf" ;;
-        riscv64) deb_arch="riscv64" ;;
-        *)       deb_arch="$HOST_ARCH" ;;
-    esac
-
-    # qemu-system package
-    local pkg_name="qemu-system-x86"
-    [ "$HOST_ARCH" = "aarch64" ] || [ "$HOST_ARCH" = "armhf" ] && pkg_name="qemu-system-arm"
-    local qemu_ver="9.0.2+dfsg-4"
-    local deb_url="https://deb.debian.org/debian/pool/main/q/qemu/${pkg_name}_${qemu_ver}_${deb_arch}.deb"
-
-    if download_file "$deb_url" "$dl_dir/qemu.deb"; then
-        extract_deb_binary "$dl_dir/qemu.deb" "$QEMU_SYS" "$dl_dir" && \
-        extract_deb_binary "$dl_dir/qemu.deb" "$QEMU_IMG" "$dl_dir" && \
-        echo "[INSTALL] QEMU system binaries extracted to $dl_dir"
-    fi
-
-    # cloud-localds
+    # Handle cloud-localds installation separately (part of cloud-image-utils)
     if ! cmd_exists "$CLOUD_LOCALDS"; then
-        local cloud_url="https://deb.debian.org/debian/pool/main/c/cloud-image-utils/cloud-image-utils_0.14-4_all.deb"
-        download_file "$cloud_url" "$dl_dir/cloud.deb" 2>/dev/null && \
-        extract_deb_binary "$dl_dir/cloud.deb" "cloud-localds" "$dl_dir"
-    fi
+        echo "[INFO] '$CLOUD_LOCALDS' missing. Attempting setup..."
+        if cmd_exists apt-get && [ "$(id -u)" -eq 0 ]; then
+            apt-get update -qq && apt-get install -y -qq cloud-image-utils
+        elif cmd_exists pacman && [ "$(id -u)" -eq 0 ]; then
+            pacman -Sy --noconfirm cloud-image-utils 2>/dev/null || true
+        elif cmd_exists dnf && [ "$(id -u)" -eq 0 ]; then
+            dnf install -y cloud-utils 2>/dev/null || true
+        fi
 
-    if [ -f "$dl_dir/$QEMU_SYS" ]; then
-        export PATH="$dl_dir:$PATH"
-        echo "[INSTALL] QEMU ready in $dl_dir"
-        return 0
+        if ! cmd_exists "$CLOUD_LOCALDS"; then
+            local cloud_url="https://deb.debian.org/debian/pool/main/c/cloud-image-utils/cloud-image-utils_0.14-4_all.deb"
+            if download_file "$cloud_url" "$dl_dir/cloud.deb"; then
+                extract_deb_binary "$dl_dir/cloud.deb" "cloud-localds" "$dl_dir"
+            fi
+        fi
     fi
-
-    echo "[ERROR] ============================================"
-    echo "[ERROR] Failed to install QEMU automatically."
-    echo "[ERROR] Install manually:"
-    echo "[ERROR]   Ubuntu/Debian: sudo apt install qemu-system-x86 qemu-utils cloud-image-utils"
-    echo "[ERROR]   Arch:          sudo pacman -S qemu-system qemu-utils cloud-image-utils"
-    echo "[ERROR]   Fedora:        sudo dnf install qemu-kvm qemu-img cloud-utils"
-    echo "[ERROR]   macOS:         brew install qemu"
-    echo "[ERROR] ============================================"
-    exit 1
 }
 
 install_qemu_auto
@@ -205,8 +289,8 @@ install_qemu_auto
 # TOOL CHECK
 # =============================
 for cmd in "$QEMU_SYS" "$QEMU_IMG" "$CLOUD_LOCALDS"; do
-    if ! cmd_exists $cmd; then
-        echo "[ERROR] '$cmd' not found after auto-install."
+    if ! cmd_exists "$cmd"; then
+        echo "[ERROR] '$cmd' not found after auto-install attempts."
         exit 1
     fi
 done
