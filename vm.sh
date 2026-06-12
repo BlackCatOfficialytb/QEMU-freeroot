@@ -58,59 +58,6 @@ download_file() {
     fi
 }
 
-extract_deb_binary() {
-    local deb_file="$1" bin_name="$2" out_dir="$3"
-    mkdir -p "$out_dir"
-    local data_tar="" member_offset=8
-    local file_size
-    file_size=$(stat -c%s "$deb_file" 2>/dev/null || echo 0)
-
-    while [ "$member_offset" -lt "$file_size" ]; do
-        local header mname msize
-        header=$(dd if="$deb_file" bs=1 skip="$member_offset" count=60 2>/dev/null)
-        mname=$(echo "$header" | cut -c1-16 | tr -d ' ')
-        msize=$(echo "$header" | cut -c49-58 | tr -d ' ')
-        [ -z "$msize" ] && break
-        [ "$msize" -eq 0 ] 2>/dev/null && break
-        member_offset=$((member_offset + 60))
-        if echo "$mname" | grep -q "data.tar"; then
-            dd if="$deb_file" bs=1 skip="$member_offset" count="$msize" of="$out_dir/data.tar.tmp" 2>/dev/null
-            data_tar="$out_dir/data.tar.tmp"
-            break
-        fi
-        member_offset=$((member_offset + msize))
-        [ $((member_offset % 2)) -ne 0 ] && member_offset=$((member_offset + 1))
-    done
-
-    if [ -z "$data_tar" ] || [ ! -f "$data_tar" ]; then
-        echo "[ERROR] data.tar not found in .deb."
-        return 1
-    fi
-
-    local found=0
-    # Try all decompression methods
-    for try in "-xzf" "-xjf" "-xf"; do
-        [ "$found" -eq 1 ] && break
-        if tar $try "$data_tar" -C "$out_dir" "usr/bin/$bin_name" 2>/dev/null; then
-            mv "$out_dir/usr/bin/$bin_name" "$out_dir/$bin_name" 2>/dev/null
-            found=1
-        elif tar $try "$data_tar" -C "$out_dir" 2>/dev/null; then
-            if [ -f "$out_dir/usr/bin/$bin_name" ]; then
-                mv "$out_dir/usr/bin/$bin_name" "$out_dir/$bin_name"
-                found=1
-            fi
-        fi
-    done
-    rm -f "$data_tar"
-
-    if [ "$found" -eq 1 ] && [ -f "$out_dir/$bin_name" ]; then
-        chmod +x "$out_dir/$bin_name"
-        return 0
-    fi
-    echo "[ERROR] $bin_name not found in .deb"
-    return 1
-}
-
 # ===================================================
 # FALLBACK: CLONE & COMPILE FROM SOURCE
 # ===================================================
@@ -141,16 +88,22 @@ build_qemu_from_source() {
     # Attempt to install building dependencies if running as root
     if [ "$(id -u)" -eq 0 ]; then
         echo "[BUILD] Installing compiling dependencies..."
-        if cmd_exists apt-get; then
-            apt-get update -qq && apt-get install -y -qq ninja-build python3-pip libglib2.0-dev libpixman-1-dev pkg-config make gcc g++
+        if cmd_exists apt; then
+            apt update -qq && apt install -y -qq build-essential ninja-build python3-pip libglib2.0-dev libpixman-1-dev pkg-config
+        elif cmd_exists apt-get; then
+            apt-get update -qq && apt-get install -y -qq build-essential ninja-build python3-pip libglib2.0-dev libpixman-1-dev pkg-config
         elif cmd_exists pacman; then
-            pacman -Sy --noconfirm ninja python glib2 pixman pkgconf make gcc gcc-libs
+            pacman -Sy --noconfirm --needed base-devel ninja python glib2 pixman pkgconf
         elif cmd_exists dnf; then
-            dnf install -y ninja-build python3 glib2-devel pixman-devel pkgconfig make gcc gcc-c++
+            dnf groupinstall -y "Development Tools"
+            dnf install -y ninja-build python3 glib2-devel pixman-devel pkgconfig
+        elif cmd_exists zypper; then
+            zypper install -y -t pattern devel_basis
+            zypper install -y ninja python3-devel glib2-devel pixman-devel pkg-config
         fi
     else
         echo "[INFO] Not running as root; skipping package dependency installation."
-        echo "[INFO] Please ensure 'ninja', 'glib', 'pixman', 'pkg-config', and C++ compiler tools are preinstalled on your host."
+        echo "[INFO] Please ensure build tools, 'ninja', 'glib', 'pixman', and 'pkg-config' are preinstalled on your host."
     fi
 
     echo "[BUILD] Configuring QEMU for $TARGET..."
@@ -211,7 +164,7 @@ install_qemu_auto() {
 
         # 1. TRY DIRECT DOWNLOAD OF THE SPECIFIED BINARIES
         echo "[INSTALL] Attempting direct binary downloads..."
-        local base_url="https://github.com/BlackCatOfficialytb/bcofilesrepo/releases/download/qemu-related"
+        local base_url="https://github.com/BlackCatOfficialytb/bcofilesrepo/releases/download/qemu-files-full-bin-v11.0.1-20261006"
         local bins=(
             "qemu-bridge-helper"
             "qemu-edid"
@@ -254,21 +207,34 @@ install_qemu_auto() {
         fi
     fi
 
-    # Handle cloud-localds installation separately (part of cloud-image-utils)
+    # Handle cloud-localds installation separately
     if ! cmd_exists "$CLOUD_LOCALDS"; then
         echo "[INFO] '$CLOUD_LOCALDS' missing. Attempting setup..."
-        if cmd_exists apt-get && [ "$(id -u)" -eq 0 ]; then
-            apt-get update -qq && apt-get install -y -qq cloud-image-utils
-        elif cmd_exists pacman && [ "$(id -u)" -eq 0 ]; then
-            pacman -Sy --noconfirm cloud-image-utils 2>/dev/null || true
-        elif cmd_exists dnf && [ "$(id -u)" -eq 0 ]; then
-            dnf install -y cloud-utils 2>/dev/null || true
-        fi
+        
+        local cloud_primary_url="https://raw.githubusercontent.com/BlackCatOfficialytb/QEMU-freeroot/refs/heads/main/cloud-localds.sh"
+        local cloud_fallback_url="https://github.com/canonical/cloud-utils/raw/refs/heads/main/bin/cloud-localds"
+        local temp_dest="$dl_dir/cloud-localds.sh"
+        local final_dest="$dl_dir/cloud-localds"
 
-        if ! cmd_exists "$CLOUD_LOCALDS"; then
-            local cloud_url="https://deb.debian.org/debian/pool/main/c/cloud-image-utils/cloud-image-utils_0.14-4_all.deb"
-            if download_file "$cloud_url" "$dl_dir/cloud.deb"; then
-                extract_deb_binary "$dl_dir/cloud.deb" "cloud-localds" "$dl_dir"
+        echo "[INFO] Attempting to download cloud-localds from primary source..."
+        if download_file "$cloud_primary_url" "$temp_dest"; then
+            echo "[INFO] Successfully downloaded primary cloud-localds.sh"
+            if mv "$temp_dest" "$final_dest" 2>/dev/null; then
+                chmod +x "$final_dest"
+                echo "[INFO] Renamed primary cloud-localds.sh to cloud-localds."
+            else
+                echo "[WARNING] Could not rename cloud-localds.sh to cloud-localds. Keeping original."
+                chmod +x "$temp_dest"
+                CLOUD_LOCALDS="cloud-localds.sh"
+            fi
+        else
+            echo "[WARNING] Primary source download failed. Trying fallback source..."
+            if download_file "$cloud_fallback_url" "$final_dest"; then
+                echo "[INFO] Successfully downloaded fallback cloud-localds."
+                chmod +x "$final_dest"
+            else
+                echo "[ERROR] Failed to download cloud-localds from both primary and fallback sources."
+                exit 1
             fi
         fi
     fi
@@ -310,13 +276,13 @@ runcmd:
   - echo "$USERNAME:$PASSWORD" | chpasswd
   - mkdir -p /var/run/sshd
   - /usr/sbin/sshd -D &
-  - fallocate -l $SWAP_SIZE /swapfile
-  - chmod 600 /swapfile
-  - mkswap /swapfile
-  - swapon /swapfile
-  - echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
-  - if [ "$SWAP_SIZE" -eq 0 ]; then
-      on_swap
+  - |
+    if [ "$SWAP_SIZE" != "0G" ] && [ "$SWAP_SIZE" != "0" ]; then
+      fallocate -l $SWAP_SIZE /swapfile
+      chmod 600 /swapfile
+      mkswap /swapfile
+      swapon /swapfile
+      echo '/swapfile none swap sw 0 0' >> /etc/fstab
     fi
 growpart:
   mode: auto
