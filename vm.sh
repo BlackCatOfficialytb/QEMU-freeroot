@@ -89,17 +89,17 @@ build_qemu_from_source() {
     if [ "$(id -u)" -eq 0 ]; then
         echo "[BUILD] Installing compiling dependencies..."
         if cmd_exists apt; then
-            apt update -qq && apt install -y -qq build-essential ninja-build python3-pip libglib2.0-dev libpixman-1-dev pkg-config
+            apt update -qq && apt install -y -qq build-essential ninja-build python3-pip libglib2.0-dev libpixman-1-dev pkg-config libaio-dev
         elif cmd_exists apt-get; then
-            apt-get update -qq && apt-get install -y -qq build-essential ninja-build python3-pip libglib2.0-dev libpixman-1-dev pkg-config
+            apt-get update -qq && apt-get install -y -qq build-essential ninja-build python3-pip libglib2.0-dev libpixman-1-dev pkg-config libaio-dev
         elif cmd_exists pacman; then
-            pacman -Sy --noconfirm --needed base-devel ninja python glib2 pixman pkgconf
+            pacman -Sy --noconfirm --needed base-devel ninja python glib2 pixman pkgconf libaio
         elif cmd_exists dnf; then
             dnf groupinstall -y "Development Tools"
-            dnf install -y ninja-build python3 glib2-devel pixman-devel pkgconfig
+            dnf install -y ninja-build python3 glib2-devel pixman-devel pkgconfig libaio-devel
         elif cmd_exists zypper; then
             zypper install -y -t pattern devel_basis
-            zypper install -y ninja python3-devel glib2-devel pixman-devel pkg-config
+            zypper install -y ninja python3-devel glib2-devel pixman-devel pkg-config libaio-devel
         fi
     else
         echo "[INFO] Not running as root; skipping package dependency installation."
@@ -148,18 +148,19 @@ install_qemu_auto() {
     local dl_dir="$VM_DIR/qemu-binaries"
     mkdir -p "$dl_dir"
     
-    # Prepend our binaries folder to the path
+    # Prepend our binaries folder to the path and dynamic library path
     export PATH="$dl_dir:$PATH"
+    export LD_LIBRARY_PATH="$dl_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
     local missing=()
-    cmd_exists "$QEMU_SYS" || missing+=("$QEMU_SYS")
-    cmd_exists "$QEMU_IMG" || missing+=("$QEMU_IMG")
+    (cmd_exists "$QEMU_SYS" && "$QEMU_SYS" --version &>/dev/null) || missing+=("$QEMU_SYS")
+    (cmd_exists "$QEMU_IMG" && "$QEMU_IMG" --version &>/dev/null) || missing+=("$QEMU_IMG")
     
     if [ ${#missing[@]} -eq 0 ]; then
-        echo "[INFO] QEMU binaries ($QEMU_SYS, $QEMU_IMG) are already available."
+        echo "[INFO] QEMU binaries ($QEMU_SYS, $QEMU_IMG) are available and fully functional."
     else
         echo "[INFO] Host architecture: $HOST_ARCH"
-        echo "[INFO] Missing tools: ${missing[*]}"
+        echo "[INFO] Missing or dysfunctional tools: ${missing[*]}"
         local success=1
 
         # 1. TRY DIRECT DOWNLOAD OF THE SPECIFIED BINARIES
@@ -177,6 +178,11 @@ install_qemu_auto() {
             "qemu-vmsr-helper"
         )
 
+        # Clear existing non-functional binaries to ensure a clean state
+        for bin in "${bins[@]}"; do
+            rm -f "$dl_dir/$bin"
+        done
+
         for bin in "${bins[@]}"; do
             if ! download_file "$base_url/$bin" "$dl_dir/$bin"; then
                 echo "[WARNING] Failed to download $bin"
@@ -186,16 +192,53 @@ install_qemu_auto() {
             fi
         done
 
-        # Verify critical binaries are successfully present and working
+        # Verify critical binaries are successfully present and working on this host
         if [ "$success" -eq 1 ] && [ -f "$dl_dir/$QEMU_SYS" ] && [ -f "$dl_dir/$QEMU_IMG" ]; then
-            echo "[INSTALL] QEMU binaries downloaded and configured successfully!"
+            echo "[INFO] Testing downloaded binaries for compatibility and missing shared libraries..."
+            if "$dl_dir/$QEMU_IMG" --version &>/dev/null && "$dl_dir/$QEMU_SYS" --version &>/dev/null; then
+                echo "[INSTALL] QEMU binaries downloaded and verified successfully!"
+            else
+                echo "[WARNING] Downloaded QEMU binaries failed sanity checks. Attempting automatic user-space libaio extraction..."
+                
+                # Resolve the matching package for the system architecture
+                local libaio_url=""
+                if [ "$HOST_ARCH" = "x86_64" ]; then
+                    libaio_url="http://archive.ubuntu.com/ubuntu/pool/main/liba/libaio/libaio1_0.3.112-13build1_amd64.deb"
+                elif [ "$HOST_ARCH" = "aarch64" ]; then
+                    libaio_url="http://ports.ubuntu.com/pool/main/liba/libaio/libaio1_0.3.112-13build1_arm64.deb"
+                fi
+
+                if [ -n "$libaio_url" ] && cmd_exists dpkg; then
+                    local deb_file="$dl_dir/libaio1.deb"
+                    local ext_dir="$dl_dir/libaio_ext"
+                    
+                    if download_file "$libaio_url" "$deb_file"; then
+                        mkdir -p "$ext_dir"
+                        if dpkg -x "$deb_file" "$ext_dir" 2>/dev/null; then
+                            # Copy the extracted library into the qemu-binaries directory
+                            cp "$ext_dir"/usr/lib/*/libaio.so.1* "$dl_dir/" 2>/dev/null || \
+                            find "$ext_dir" -name "libaio.so.1*" -exec cp {} "$dl_dir/" \; 2>/dev/null || true
+                            echo "[INFO] Successfully extracted libaio.so.1 to $dl_dir"
+                        fi
+                        rm -rf "$ext_dir" "$deb_file"
+                    fi
+                fi
+
+                # Re-verify the sanity checks with the local library path set
+                if "$dl_dir/$QEMU_IMG" --version &>/dev/null && "$dl_dir/$QEMU_SYS" --version &>/dev/null; then
+                    echo "[INSTALL] QEMU binaries verified successfully after extracting libaio!"
+                else
+                    echo "[WARNING] Sanity check still failed. Falling back to compilation..."
+                    success=0
+                fi
+            fi
         else
             success=0
         fi
 
         # 2. FALLBACK: COMPILE FROM GITLAB SOURCE
         if [ "$success" -ne 1 ]; then
-            echo "[WARNING] Direct binary downloads failed or were incomplete. Falling back to compilation..."
+            echo "[WARNING] Direct binary downloads failed or were incompatible. Falling back to compilation..."
             if build_qemu_from_source; then
                 success=1
             fi
