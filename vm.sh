@@ -63,15 +63,18 @@ download_file() {
 # ===================================================
 build_qemu_from_source() {
     echo "[FALLBACK] Cloning and compiling QEMU from GitLab..."
-    local src_dir="$VM_DIR/qemu-src"
+    # Create a temporary source directory in /tmp because the active filesystem (e.g. HopsFS) may not support symlinks.
+    local src_dir
+    src_dir=$(mktemp -d -t qemu-src-XXXXXX)
     local dl_dir="$VM_DIR/qemu-binaries"
-    rm -rf "$src_dir"
     
     if ! cmd_exists git; then
         echo "[ERROR] 'git' is required to clone QEMU source code. Please install 'git' first."
+        rm -rf "$src_dir"
         return 1
     fi
     
+    echo "[BUILD] Cloning QEMU source into $src_dir..."
     git clone --depth 1 https://gitlab.com/qemu-project/qemu.git "$src_dir"
     cd "$src_dir"
 
@@ -118,10 +121,13 @@ build_qemu_from_source() {
     local sys_bin="qemu-system-${HOST_ARCH}"
     [ "$HOST_ARCH" = "armhf" ] && sys_bin="qemu-system-arm"
     
+    local build_success=0
     if [ -f "build/$sys_bin" ]; then
         cp "build/$sys_bin" "$dl_dir/"
+        build_success=1
     elif [ -f "build/$TARGET/$sys_bin" ]; then
         cp "build/$TARGET/$sys_bin" "$dl_dir/"
+        build_success=1
     fi
 
     if [ -f "build/qemu-img" ]; then
@@ -131,7 +137,9 @@ build_qemu_from_source() {
     fi
 
     cd "$VM_DIR"
-    if [ -f "$dl_dir/$QEMU_SYS" ] && [ -f "$dl_dir/$QEMU_IMG" ]; then
+    rm -rf "$src_dir" # Clean up temp directory immediately
+
+    if [ "$build_success" -eq 1 ] && [ -f "$dl_dir/$QEMU_SYS" ] && [ -f "$dl_dir/$QEMU_IMG" ]; then
         chmod +x "$dl_dir"/*
         echo "[BUILD] QEMU successfully compiled and ready in $dl_dir"
         return 0
@@ -198,35 +206,46 @@ install_qemu_auto() {
             if "$dl_dir/$QEMU_IMG" --version &>/dev/null && "$dl_dir/$QEMU_SYS" --version &>/dev/null; then
                 echo "[INSTALL] QEMU binaries downloaded and verified successfully!"
             else
-                echo "[WARNING] Downloaded QEMU binaries failed sanity checks. Attempting automatic user-space libaio extraction..."
+                echo "[WARNING] Downloaded QEMU binaries failed sanity checks. Attempting automatic user-space libaio and libiscsi extraction..."
                 
-                # Resolve the matching package for the system architecture
+                # Resolve the matching packages for the system architecture
                 local libaio_url=""
+                local libiscsi_url=""
                 if [ "$HOST_ARCH" = "x86_64" ]; then
                     libaio_url="http://archive.ubuntu.com/ubuntu/pool/main/liba/libaio/libaio1_0.3.112-13build1_amd64.deb"
+                    libiscsi_url="http://ftp.debian.org/debian/pool/main/libi/libiscsi/libiscsi7_1.20.0-4_amd64.deb"
                 elif [ "$HOST_ARCH" = "aarch64" ]; then
                     libaio_url="http://ports.ubuntu.com/pool/main/liba/libaio/libaio1_0.3.112-13build1_arm64.deb"
+                    libiscsi_url="http://ftp.debian.org/debian/pool/main/libi/libiscsi/libiscsi7_1.20.0-4_arm64.deb"
                 fi
 
-                if [ -n "$libaio_url" ] && cmd_exists dpkg; then
-                    local deb_file="$dl_dir/libaio1.deb"
-                    local ext_dir="$dl_dir/libaio_ext"
+                local urls=()
+                [ -n "$libaio_url" ] && urls+=("$libaio_url")
+                [ -n "$libiscsi_url" ] && urls+=("$libiscsi_url")
+
+                if [ ${#urls[@]} -gt 0 ] && cmd_exists dpkg; then
+                    local ext_dir="$dl_dir/lib_ext"
+                    mkdir -p "$ext_dir"
                     
-                    if download_file "$libaio_url" "$deb_file"; then
-                        mkdir -p "$ext_dir"
-                        if dpkg -x "$deb_file" "$ext_dir" 2>/dev/null; then
-                            # Copy the extracted library into the qemu-binaries directory
-                            cp "$ext_dir"/usr/lib/*/libaio.so.1* "$dl_dir/" 2>/dev/null || \
-                            find "$ext_dir" -name "libaio.so.1*" -exec cp {} "$dl_dir/" \; 2>/dev/null || true
-                            echo "[INFO] Successfully extracted libaio.so.1 to $dl_dir"
+                    for url in "${urls[@]}"; do
+                        local deb_file="$dl_dir/temp.deb"
+                        if download_file "$url" "$deb_file"; then
+                            if dpkg -x "$deb_file" "$ext_dir" 2>/dev/null; then
+                                echo "[INFO] Extracted $(basename "$url")"
+                            fi
+                            rm -f "$deb_file"
                         fi
-                        rm -rf "$ext_dir" "$deb_file"
-                    fi
+                    done
+                    
+                    # Copy all extracted shared libraries (.so) to the qemu-binaries directory
+                    cp "$ext_dir"/usr/lib/*/lib*.so* "$dl_dir/" 2>/dev/null || \
+                    find "$ext_dir" -name "lib*.so*" -exec cp {} "$dl_dir/" \; 2>/dev/null || true
+                    rm -rf "$ext_dir"
                 fi
 
                 # Re-verify the sanity checks with the local library path set
                 if "$dl_dir/$QEMU_IMG" --version &>/dev/null && "$dl_dir/$QEMU_SYS" --version &>/dev/null; then
-                    echo "[INSTALL] QEMU binaries verified successfully after extracting libaio!"
+                    echo "[INSTALL] QEMU binaries verified successfully after extracting libaio and libiscsi!"
                 else
                     echo "[WARNING] Sanity check still failed. Falling back to compilation..."
                     success=0
@@ -239,6 +258,10 @@ install_qemu_auto() {
         # 2. FALLBACK: COMPILE FROM GITLAB SOURCE
         if [ "$success" -ne 1 ]; then
             echo "[WARNING] Direct binary downloads failed or were incompatible. Falling back to compilation..."
+            # Clean up potentially corrupt/incompatible binaries from direct downloads so build checker doesn't get confused
+            for bin in "${bins[@]}"; do
+                rm -f "$dl_dir/$bin"
+            done
             if build_qemu_from_source; then
                 success=1
             fi
